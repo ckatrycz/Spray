@@ -40,7 +40,7 @@ endif ()
 if (MSVC)
     link_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/lib)
     set(CMAKE_CXX_FLAGS
-            "${CMAKE_CXX_FLAGS} /MP /Z7 /D \"_CRT_SECURE_NO_WARNINGS\" /arch:AVX2 -DGL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED /std:c++14")
+            "${CMAKE_CXX_FLAGS} /MP /Z7 /D \"_CRT_SECURE_NO_WARNINGS\" /arch:AVX -DGL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED")
 else ()
     set(CMAKE_CXX_FLAGS
             "${CMAKE_CXX_FLAGS} -std=c++14 -march=native\
@@ -51,7 +51,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTC_PASS_EXCEPTION_TO_PYTHON")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTC_INCLUDED")
 
-if ($ENV{TC_USE_DOUBLE})
+if (TC_USE_DOUBLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTC_USE_DOUBLE")
     message("Using float64 precision")
 endif()
@@ -61,6 +61,4 @@ if (TC_USE_MPI)
     message("Using MPI")
 endif ()
 
-if (NOT WIN32)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")

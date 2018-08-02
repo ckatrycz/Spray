@@ -7,7 +7,7 @@
 
 #include <memory>
 #include <vector>
-#include <taichi/common/dict.h>
+#include <taichi/common/config.h>
 #include <taichi/math.h>
 #include <taichi/visual/scene.h>
 
@@ -93,16 +93,18 @@ struct ElementMesh {
     TC_STATIC_ELSE {
       TC_INFO("Adding mesh, fn={}", config.get<std::string>("mesh_fn"));
       std::string mesh_fn = config.get<std::string>("mesh_fn");
+      std::string full_fn = std::getenv("TAICHI_ROOT_DIR") +
+                            std::string("/taichi/projects/mpm/data/") + mesh_fn;
       auto mesh = std::make_shared<Mesh>();
       Config mesh_config;
-      mesh_config.set("filename", mesh_fn);
+      mesh_config.set("filename", full_fn);
       mesh_config.set("reverse_vertices",
                       config.get<bool>("reverse_vertices", false));
       mesh->initialize(mesh_config);
       for (auto tri : mesh->get_triangles()) {
         Elem elem;
         for (int i = 0; i < 3; i++) {
-          elem.v[i] = id(tri.v)[i];
+          elem.v[i] = tri.v[i];
         }
         elements.push_back(elem);
       }
@@ -113,9 +115,7 @@ struct ElementMesh {
 
 TC_FORCE_INLINE real distance_to_segment(const Vector2 &pos,
                                          const Vector2 &a,
-                                         const Vector2 &b,
-                                         bool clamp_to_ends = false,
-                                         bool signed_result = false) {
+                                         const Vector2 &b, bool clamp_to_ends=false, bool signed_result=false) {
   real t = dot(pos - a, b - a) / length2(b - a);
   if (clamp_to_ends) {
     t = clamp(t, 0.0_f, 1.0_f);

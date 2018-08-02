@@ -5,11 +5,10 @@
 
 #pragma once
 
+#include <taichi/math/math.h>
 #include <vector>
 #include <algorithm>
 #include <numeric>
-
-#include "math.h"
 
 TC_NAMESPACE_BEGIN
 

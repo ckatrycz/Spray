@@ -5,13 +5,14 @@
 
 #pragma once
 
+#include <taichi/geometry/factory.h>
+#include <taichi/visual/scene_geometry.h>
 #include <memory>
 #include <vector>
+#include <memory.h>
 #include <string>
 #include <functional>
 #include <mutex>
-#include <taichi/geometry/factory.h>
-#include <taichi/visual/scene_geometry.h>
 #include <taichi/math/angular.h>
 #include <taichi/geometry/mesh.h>
 #include <taichi/math.h>
@@ -317,7 +318,7 @@ struct RigidBody {
     return inv_mass;
   }
 
- private:
+private:
   // These are in local space. Only transformed versions are public.
 
   InertiaType get_inertia() const {
@@ -327,8 +328,8 @@ struct RigidBody {
   InertiaType get_inv_inertia() const {
     return inv_inertia;
   }
+public:
 
- public:
   void set_mass(real mass) {
     TC_ASSERT(std::isnormal(mass));
     this->mass = mass;
@@ -344,21 +345,11 @@ struct RigidBody {
   void set_inertia(const InertiaType &inertia) {
     this->inertia = inertia;
     TC_STATIC_IF(dim == 2) {
-      this->inv_inertia = inversed(id(inertia));
+      this->inv_inertia = inversed(inertia);
     }
     TC_STATIC_ELSE {
-#ifdef _WIN64
-#ifdef _MSVC_LANG
       this->inv_inertia =
-          inversed(id(inertia).cast<float64>()).cast<real>();
-#else
-      this->inv_inertia =
-          inversed(id(inertia).template cast<float64>()).template cast<real>();
-#endif
-#else
-      this->inv_inertia =
-          inversed(id(inertia).template cast<float64>()).template cast<real>();
-#endif
+          inversed(inertia.template cast<float64>()).template cast<real>();
     }
     TC_STATIC_END_IF
   }

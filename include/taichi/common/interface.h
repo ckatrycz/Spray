@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <taichi/common/dict.h>
+#include <taichi/common/config.h>
 #include <taichi/common/asset_manager.h>
 #include <cstring>
 #include <string>
@@ -29,10 +29,6 @@ TC_EXPORT std::unique_ptr<T> create_instance_unique(const std::string &alias);
 template <typename T>
 TC_EXPORT std::unique_ptr<T> create_instance_unique(const std::string &alias,
                                                     const Config &config);
-template <typename T>
-TC_EXPORT std::unique_ptr<T> create_instance_unique_ctor(
-    const std::string &alias,
-    const Config &config);
 
 template <typename T>
 TC_EXPORT T *create_instance_raw(const std::string &alias);
@@ -120,15 +116,11 @@ class InterfaceHolder {
     }                                                                         \
     using FactoryMethod = std::function<std::shared_ptr<T>()>;                \
     using FactoryUniqueMethod = std::function<std::unique_ptr<T>()>;          \
-    using FactoryUniqueCtorMethod =                                           \
-        std::function<std::unique_ptr<T>(const Dict &config)>;                \
     using FactoryRawMethod = std::function<T *()>;                            \
     using FactoryPlacementMethod = std::function<T *(void *)>;                \
     std::map<std::string, FactoryMethod> implementation_factories;            \
     std::map<std::string, FactoryUniqueMethod>                                \
         implementation_unique_factories;                                      \
-    std::map<std::string, FactoryUniqueCtorMethod>                            \
-        implementation_unique_ctor_factories;                                 \
     std::map<std::string, FactoryRawMethod> implementation_raw_factories;     \
     std::map<std::string, FactoryPlacementMethod>                             \
         implementation_placement_factories;                                   \
@@ -145,21 +137,6 @@ class InterfaceHolder {
           std::make_pair(alias, [&]() { return std::make_shared<G>(); }));    \
       implementation_unique_factories.insert(                                 \
           std::make_pair(alias, [&]() { return std::make_unique<G>(); }));    \
-      implementation_raw_factories.insert(                                    \
-          std::make_pair(alias, [&]() { return new G(); }));                  \
-      implementation_placement_factories.insert(std::make_pair(               \
-          alias, [&](void *place) { return new (place) G(); }));              \
-    }                                                                         \
-    template <typename G>                                                     \
-    void insert_new(const std::string &alias) {                               \
-      /*with ctor*/                                                           \
-      implementation_factories.insert(                                        \
-          std::make_pair(alias, [&]() { return std::make_shared<G>(); }));    \
-      implementation_unique_factories.insert(                                 \
-          std::make_pair(alias, [&]() { return std::make_unique<G>(); }));    \
-      implementation_unique_ctor_factories.insert(std::make_pair(             \
-          alias,                                                              \
-          [&](const Dict &config) { return std::make_unique<G>(config); }));  \
       implementation_raw_factories.insert(                                    \
           std::make_pair(alias, [&]() { return new G(); }));                  \
       implementation_placement_factories.insert(std::make_pair(               \
@@ -201,13 +178,6 @@ class InterfaceHolder {
       assert_info(factory != implementation_unique_factories.end(),           \
                   "Implementation [" + name + "::" + alias + "] not found!"); \
       return (factory->second)();                                             \
-    }                                                                         \
-    std::unique_ptr<T> create_unique_ctor(const std::string &alias,           \
-                                          const Dict &config) {               \
-      auto factory = implementation_unique_ctor_factories.find(alias);        \
-      assert_info(factory != implementation_unique_ctor_factories.end(),      \
-                  "Implementation [" + name + "::" + alias + "] not found!"); \
-      return (factory->second)(config);                                       \
     }                                                                         \
     T *create_raw(const std::string &alias) {                                 \
       auto factory = implementation_raw_factories.find(alias);                \
@@ -254,12 +224,6 @@ class InterfaceHolder {
     auto instance = create_instance_unique<class_name>(alias);                \
     instance->initialize(config);                                             \
     return instance;                                                          \
-  }                                                                           \
-  template <>                                                                 \
-  TC_EXPORT std::unique_ptr<class_name> create_instance_unique_ctor(          \
-      const std::string &alias, const Dict &config) {                         \
-    return TC_IMPLEMENTATION_HOLDER_NAME(class_name)::get_instance()          \
-        ->create_unique_ctor(alias, config);                                  \
   }                                                                           \
   template <>                                                                 \
   TC_EXPORT class_name *create_instance_raw(const std::string &alias) {       \
@@ -333,22 +297,5 @@ class InterfaceHolder {
           ->insert<class_name>(alias);                               \
     }                                                                \
   } ImplementationInjector_##base_class_name##class_name##instance;
-
-#define TC_IMPLEMENTATION_NEW(base_class_name, class_name)           \
-  class ImplementationInjector_##base_class_name##class_name {       \
-   public:                                                           \
-    ImplementationInjector_##base_class_name##class_name() {         \
-      TC_IMPLEMENTATION_HOLDER_NAME(base_class_name)::get_instance() \
-          ->insert_new<class_name>(class_name::get_name_static());   \
-    }                                                                \
-  } ImplementationInjector_##base_class_name##class_name##instance;
-
-#define TC_NAME(alias)                            \
-  virtual std::string get_name() const override { \
-    return get_name_static();                     \
-  }                                               \
-  static std::string get_name_static() {          \
-    return alias;                                 \
-  }
 
 TC_NAMESPACE_END

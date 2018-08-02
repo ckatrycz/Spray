@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "interface.h"
+#include <taichi/common/interface.h>
 
 TC_NAMESPACE_BEGIN
 

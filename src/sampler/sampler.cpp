@@ -11,7 +11,7 @@ TC_NAMESPACE_BEGIN
 
 class PseudoRandomSampler : public Sampler {
  public:
-  void initialize(const Dict &config) override {
+  void initialize() {
   }
 
   real sample(int d, long long i) const {

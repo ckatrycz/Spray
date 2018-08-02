@@ -8,7 +8,6 @@
 // The following code is based the code provided with the SPGrid paper:
 //      http://pages.cs.wisc.edu/~sifakis/papers/SPGrid.pdf
 //
-// Modified and merged into Taichi by Yuanming Hu
 //#####################################################################
 
 //#####################################################################

@@ -1,4 +1,5 @@
 import taichi as tc
+import random
 
 
 def create_taichi_text():
@@ -24,9 +25,12 @@ def create_taichi_text():
 
 
 def create_scene():
+  downsample = 1
+  width, height = 900 / downsample, 600 / downsample
   camera = tc.Camera(
       'pinhole',
-      res=(900, 600),
+      width=width,
+      height=height,
       fov=60,
       origin=(0, 10, 0),
       look_at=(0, 0, 0),
@@ -77,4 +81,6 @@ if __name__ == '__main__':
       min_path_length=1,
       max_path_length=20,
       luminance_clamping=0.1)
-  renderer.render()
+  renderer.set_post_processor(
+      tc.post_process.LDRDisplay(exposure=0.9, bloom_radius=0.0, gamma=2.2))
+  renderer.render(10000, 20)

@@ -18,22 +18,18 @@ void Mesh::initialize(const Config &config) {
     load_from_file(filepath, config.get("reverse_vertices", false));
 }
 
-void Mesh::load_from_file(const std::string &file_path_, bool reverse_vertices) {
+void Mesh::load_from_file(const std::string &file_path, bool reverse_vertices) {
+  std::string inputfile = file_path;
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
 
-  std::string file_path = file_path_;
-  if (file_path[0] != '/') {
-    file_path = std::string(std::getenv("TAICHI_REPO_DIR")) + "/" + file_path;
-  }
-
   std::string err;
   bool ret =
-      tinyobj::LoadObj(&attrib, &shapes, &materials, &err, file_path.c_str());
+      tinyobj::LoadObj(&attrib, &shapes, &materials, &err, inputfile.c_str());
 
   if (!err.empty()) {  // `err` may contain warning message.
-    TC_ERROR(err);
+    std::cerr << err << std::endl;
   }
 
   TC_ASSERT_INFO(ret, "Loading " + file_path + " failed");

@@ -137,7 +137,7 @@ class ProfilerRecords {
         print(ch.get(), depth + 1);
         unaccounted -= child_time;
       }
-      if (!node->childs.empty() && (unaccounted > total_time * 0.005)) {
+      if (!node->childs.empty() && (unaccounted > total_time * 0.05)) {
         make_indent(1);
         fmt::print("{} {:5.2f}%  {}\n",
                    get_readable_time_with_scale(unaccounted, scale),
@@ -225,20 +225,14 @@ class Profiler {
 
 #define TC_PROFILE(name, statements) \
   {                                  \
-    taichi::Profiler _(name);        \
+    Profiler _(name);                \
     statements;                      \
   }
 
-#define TC_PROFILER(name) taichi::Profiler _profiler_ ## __LINE__(name);
-
 #define TC_PROFILE_TPE(name, statements, elements) \
   {                                                \
-    taichi::Profiler _(name, elements);            \
+    Profiler _(name, elements);                    \
     statements;                                    \
   }
-
-inline void print_profile_info() {
-  ProfilerRecords::get_instance().print();
-}
 
 TC_NAMESPACE_END

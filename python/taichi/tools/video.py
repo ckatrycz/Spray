@@ -1,5 +1,7 @@
 from taichi.misc.util import ndarray_to_array2d, array2d_to_ndarray
-from taichi.misc.settings import get_os_name, get_directory
+from taichi.misc.settings import get_output_path
+from taichi.visual.post_process import LDRDisplay
+from taichi.misc.settings import get_os_name
 import taichi.core as core
 import os
 
@@ -8,8 +10,6 @@ FRAME_DIR = 'frames'
 
 # Write the frames to the disk and then make videos (mp4 or gif) if necessary
 
-def get_ffmpeg_path():
-  return get_directory('external/lib/ffmpeg')
 
 class VideoManager:
 
@@ -77,7 +77,7 @@ class VideoManager:
 
   def make_video(self, mp4=True, gif=True):
 
-    command = (get_ffmpeg_path() + " -loglevel panic -framerate %d -i " % self.framerate) + os.path.join(self.frame_directory, FRAME_FN_TEMPLATE) + \
+    command = ("ffmpeg -loglevel panic -framerate %d -i " % self.framerate) + os.path.join(self.frame_directory, FRAME_FN_TEMPLATE) + \
               " -s:v " + str(self.width) + 'x' + str(self.height) + \
               " -c:v libx264 -profile:v high -crf 1 -pix_fmt yuv420p -y " + self.get_output_filename('.mp4')
 
@@ -87,16 +87,16 @@ class VideoManager:
       # Generate the palette
       palette_name = self.get_output_filename('_palette.png')
       if get_os_name() == 'win':
-        command = get_ffmpeg_path() + " -loglevel panic -i %s -vf 'palettegen' -y %s" % (
+        command = "ffmpeg -loglevel panic -i %s -vf 'palettegen' -y %s" % (
             self.get_output_filename('.mp4'), palette_name)
       else:
-        command = get_ffmpeg_path() + " -loglevel panic -i %s -vf 'fps=%d,scale=320:640:flags=lanczos,palettegen' -y %s" % (
+        command = "ffmpeg -loglevel panic -i %s -vf 'fps=%d,scale=320:640:flags=lanczos,palettegen' -y %s" % (
             self.get_output_filename('.mp4'), self.framerate, palette_name)
       # print command
       os.system(command)
 
       # Generate the GIF
-      command = get_ffmpeg_path() + " -loglevel panic -i %s -i %s -lavfi paletteuse -y %s" % (
+      command = "ffmpeg -loglevel panic -i %s -i %s -lavfi paletteuse -y %s" % (
           self.get_output_filename('.mp4'), palette_name,
           self.get_output_filename('.gif'))
       # print command
@@ -105,28 +105,6 @@ class VideoManager:
 
     if not mp4:
       os.remove(self.get_output_filename('mp4'))
-
-def interpolate_frames(frame_dir, mul=4):
-  # TODO: remove dependency on cv2 here
-  import cv2
-  files = os.listdir(frame_dir)
-  images = []
-  images_interpolated = []
-  for f in sorted(files):
-    if f.endswith('png'):
-      images.append(cv2.imread(f) / 255.0)
-
-  for i in range(len(images) - 1):
-    images_interpolated.append(images[i])
-    for j in range(mul - 1):
-      alpha = 1 - j / mul
-      images_interpolated.append(images[i] * alpha + images[i + 1] * (1 - alpha))
-
-  images_interpolated.append(images[-1])
-
-  os.makedirs('interpolated', exist_ok=True)
-  for i, img in enumerate(images_interpolated):
-    cv2.imwrite('interpolated/{:05d}.png'.format(i), img * 255.0)
 
 
 def make_video(input_files,
@@ -143,7 +121,7 @@ def make_video(input_files,
     os.mkdir(tmp_dir)
     for i, inp in enumerate(input_files):
       shutil.copy(inp, os.path.join(tmp_dir, '%06d.png' % i))
-    command = (get_ffmpeg_path() + " -y -loglevel panic -framerate %d -i " % frame_rate) + tmp_dir + "/%06d.png" + \
+    command = ("ffmpeg -y -loglevel panic -framerate %d -i " % frame_rate) + tmp_dir + "/%06d.png" + \
               " -s:v " + str(width) + 'x' + str(height) + \
               " -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p " + output_path
     os.system(command)
@@ -152,7 +130,7 @@ def make_video(input_files,
     os.rmdir(tmp_dir)
   elif isinstance(input_files, str):
     assert width != 0 and height != 0
-    command = (get_ffmpeg_path() + " -loglevel panic -framerate %d -i " % frame_rate) + input_files + \
+    command = ("ffmpeg -loglevel panic -framerate %d -i " % frame_rate) + input_files + \
               " -s:v " + str(width) + 'x' + str(height) + \
               " -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p " + output_path
     os.system(command)

@@ -1,7 +1,6 @@
 from . import asset_manager
 from taichi.core import tc_core
 from taichi.misc.util import P, array2d_to_ndarray
-from taichi.visual.post_process import LDRDisplay
 
 import random
 
@@ -76,9 +75,6 @@ class Texture:
   def rotate(self, times):
     return Texture("rotate", tex=self, times=times)
 
-  def rotate_angle(self, angle):
-    return Texture("rotate_angle", tex=self, angle=angle)
-
   def translate(self, translation):
     return Texture("trans", tex=self, translation=translation)
 
@@ -104,8 +100,6 @@ class Texture:
            post_processor=None):
     from taichi.gui.image_viewer import show_image
     img = self.rasterize_to_ndarray(res)
-    if post_processor is None:
-      post_processor = LDRDisplay()
     if post_processor:
       img = post_processor.process(img)
     show_image(title, img)

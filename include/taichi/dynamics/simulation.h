@@ -19,6 +19,7 @@ class Simulation : public Unit {
   int num_threads;
   std::string working_directory;
 
+
  public:
   static constexpr int dim = dim_;
   DynamicLevelSet<dim> levelset;
@@ -30,7 +31,7 @@ class Simulation : public Unit {
   using Matrix = MatrixND<dim, real>;
   using MatrixP = MatrixND<dim + 1, real>;
 
-  TC_IO_DEF_VIRT(current_t, num_threads, working_directory, frame);
+  TC_IO_DEF(current_t, num_threads, working_directory, frame);
 
   Simulation() {
     num_threads = -1;

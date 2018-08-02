@@ -13,22 +13,22 @@ TC_NAMESPACE_BEGIN
 #undef max
 #undef min
 
-using std::abs;
-using std::acos;
-using std::asin;
-using std::atan;
-using std::cos;
-using std::floor;
-using std::max;
 using std::min;
+using std::max;
+using std::abs;
 using std::sin;
+using std::asin;
+using std::cos;
+using std::acos;
 using std::tan;
+using std::atan;
+using std::floor;
 
 const real pi{acosf(-1.0_f)};
 const real eps = 1e-6_f;
 
 template <int I, typename T>
-constexpr TC_FORCE_INLINE T pow(T a) noexcept {
+constexpr inline T pow(T a) {
   T ret(1);
   for (int i = 0; i < I; i++) {
     ret *= a;
@@ -36,16 +36,16 @@ constexpr TC_FORCE_INLINE T pow(T a) noexcept {
   return ret;
 };
 
-TC_FORCE_INLINE float32 fract(float32 a) noexcept {
+inline float32 fract(float32 a) {
   return a - (int)floor(a);
 }
 
-TC_FORCE_INLINE float64 fract(float64 a) noexcept {
+inline float64 fract(float64 a) {
   return a - (int)floor(a);
 }
 
 template <typename T>
-TC_FORCE_INLINE T clamp(const T &a, const T &min, const T &max) noexcept {
+inline T clamp(const T &a, const T &min, const T &max) {
   if (a < min)
     return min;
   if (a > max)
@@ -54,7 +54,7 @@ TC_FORCE_INLINE T clamp(const T &a, const T &min, const T &max) noexcept {
 }
 
 template <typename T>
-TC_FORCE_INLINE T clamp(const T &a) noexcept {
+inline T clamp(const T &a) {
   if (a < T(0))
     return T(0);
   if (a > T(1))
@@ -63,16 +63,16 @@ TC_FORCE_INLINE T clamp(const T &a) noexcept {
 }
 
 template <typename T, typename V>
-TC_FORCE_INLINE V lerp(T a, V x_0, V x_1) noexcept {
+inline V lerp(T a, V x_0, V x_1) {
   return (T(1) - a) * x_0 + a * x_1;
 }
 
 template <typename T>
-TC_FORCE_INLINE T sqr(const T &a) noexcept {
+T sqr(const T &a) {
   return pow<2>(a);
 }
 
-TC_FORCE_INLINE int sgn(float a) noexcept {
+inline int sgn(float a) {
   if (a < -eps)
     return -1;
   else if (a > eps)
@@ -80,7 +80,7 @@ TC_FORCE_INLINE int sgn(float a) noexcept {
   return 0;
 }
 
-TC_FORCE_INLINE int sgn(double a) noexcept {
+inline int sgn(double a) {
   if (a < -eps)
     return -1;
   else if (a > eps)
@@ -88,7 +88,7 @@ TC_FORCE_INLINE int sgn(double a) noexcept {
   return 0;
 }
 
-TC_FORCE_INLINE uint32 rand_int() noexcept {
+inline uint32 rand_int() {
   static unsigned int x = 123456789, y = 362436069, z = 521288629, w = 88675123;
   unsigned int t = x ^ (x << 11);
   x = y;
@@ -97,34 +97,12 @@ TC_FORCE_INLINE uint32 rand_int() noexcept {
   return (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)));
 }
 
-TC_FORCE_INLINE uint64 rand_int64() noexcept {
-  return ((uint64)rand_int() << 32) + rand_int();
-}
-
 // inline float frand() { return (float)rand() / (RAND_MAX + 1); }
-TC_FORCE_INLINE float32 rand() noexcept {
+inline float rand() {
   return rand_int() * (1.0_f / 4294967296.0f);
 }
 
-template <typename T>
-TC_FORCE_INLINE T rand() noexcept;
-
-template <>
-TC_FORCE_INLINE float rand<float>() noexcept {
-  return rand_int() * (1.0_f / 4294967296.0f);
-}
-
-template <>
-TC_FORCE_INLINE double rand<double>() noexcept {
-  return rand_int() * (1.0 / 4294967296.0);
-}
-
-template <>
-TC_FORCE_INLINE int rand<int>() noexcept {
-  return rand_int();
-}
-
-inline int is_prime(int a) noexcept {
+inline int is_prime(int a) {
   assert(a >= 2);
   for (int i = 2; i * i <= a; i++) {
     if (a % i == 0)
@@ -134,29 +112,29 @@ inline int is_prime(int a) noexcept {
 }
 
 template <typename T>
-TC_FORCE_INLINE T hypot2(const T &x, const T &y) noexcept {
+inline T hypot2(const T &x, const T &y) {
   return x * x + y * y;
 }
 
-TC_FORCE_INLINE float32 pow(const float32 &a, const float32 &b) noexcept {
+inline float32 pow(const float32 &a, const float32 &b) {
   return ::pow(a, b);
 }
 
-TC_FORCE_INLINE float64 pow(const float64 &a, const float64 &b) noexcept {
+inline float64 pow(const float64 &a, const float64 &b) {
   return ::pow(a, b);
 }
 
 template <typename T>
-TC_FORCE_INLINE bool is_normal(T m) noexcept {
+inline bool is_normal(T m) {
   return std::isfinite(m);
 }
 
 template <typename T>
-TC_FORCE_INLINE bool abnormal(T m) noexcept {
+inline bool abnormal(T m) {
   return !is_normal(m);
 }
 
-inline int64 get_largest_pot(int64 a) noexcept {
+inline int64 get_largest_pot(int64 a) {
   assert_info(a > 0, "a should be positive, instead of " + std::to_string(a));
   // TODO: optimize
   int64 i = 1;

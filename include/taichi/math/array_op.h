@@ -5,8 +5,9 @@
 
 #pragma once
 
-#include "array_2d.h"
-#include "math.h"
+#include <taichi/math/array_2d.h>
+#include <taichi/math/math.h>
+#include <taichi/math/math.h>
 
 TC_NAMESPACE_BEGIN
 

@@ -123,31 +123,6 @@ class RectTexture : public Texture {
 
 TC_IMPLEMENTATION(Texture, RectTexture, "rect");
 
-class RectBoundTexture : public Texture {
- protected:
-  Vector3 lower_bounds;
-  Vector3 upper_bounds;
-
- public:
-  void initialize(const Config &config) override {
-    Texture::initialize(config);
-    lower_bounds = config.get<Vector3>("lower_bounds");
-    upper_bounds = config.get<Vector3>("upper_bounds");
-  }
-
-  bool inside(const Vector3 &coord) const {
-    return lower_bounds.x < coord.x && coord.x < upper_bounds.x &&
-           lower_bounds.y < coord.y && coord.y < upper_bounds.y &&
-           lower_bounds.z < coord.z && coord.z < upper_bounds.z;
-  }
-
-  virtual Vector4 sample(const Vector3 &coord) const override {
-    return Vector4(inside(coord) ? 1.0_f : 0.0_f);
-  }
-};
-
-TC_IMPLEMENTATION(Texture, RectBoundTexture, "rect_bound");
-
 class RingTexture : public Texture {
  protected:
   real inner, outer;
@@ -393,7 +368,7 @@ class FastMeshTexture : public Texture {
             next_k = std::min(int((z - base_z) / delta_x), resolution.z);
           }
           while (k < next_k) {
-            arr.set(i, j, k, inside ? 1.0_f : 0.0_f);
+            arr.set(i, j, k, inside ? 1 : 0);
             ++k;
           }
           inside = !inside;
@@ -452,8 +427,8 @@ class MeshTexture : public Texture {
       real peeling_velocity = config.get("peeling_velocity", 1.0_f);
       std::ofstream os;
       std::string fn =
-          std::getenv("TAICHI_REPO_DIR") +
-          std::string("/projects/mpm/data/apple_peeler.pos");
+          std::getenv("TAICHI_ROOT_DIR") +
+          std::string("/taichi/projects/mpm/data/apple_peeler.pos");
       os.open(fn, std::ios::app);
       Vector3 pos;
       real t_start = -1.0_f;
@@ -464,7 +439,7 @@ class MeshTexture : public Texture {
         if (t_start < 0.0_f) {
           angle = 0.0_f;
         } else {
-          angle = 2.0_f * pi / peeling_cycle * (t - t_start);
+          angle = 2.0_f * M_PI / peeling_cycle * (t - t_start);
         }
         pos.x = 0.5_f + sin(angle);
         pos.z = 0.5_f + cos(angle);
@@ -494,8 +469,8 @@ class MeshTexture : public Texture {
   virtual Vector4 sample(const Vector3 &coord) const override {
     auto emitting_ray_test = [&]() {
       int inside = 0;
-      real alpha = rand() * 2.0_f * pi;
-      real beta = rand() * 2.0_f * pi;
+      real alpha = rand() * 2.0_f * M_PI;
+      real beta = rand() * 2.0_f * M_PI;
       Vector3 direction(
           Vector3(cos(alpha) * cos(beta), cos(alpha) * sin(beta), sin(alpha)));
       Vector3 position = coord;
@@ -545,10 +520,10 @@ TC_IMPLEMENTATION(Texture, LevelSet3DTexture, "levelset3d")
 
 class PolygonTexture : public Texture {
   // TODO: test it
- protected:
+protected:
   ElementMesh<2> poly;
 
- public:
+public:
   void initialize(const Config &config) override {
     Texture::initialize(config);
     poly.initialize(config);

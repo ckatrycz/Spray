@@ -3,6 +3,7 @@
     The use of this software is governed by the LICENSE file.
 *******************************************************************************/
 #include <taichi/geometry/mesh.h>
+#include <taichi/visualization/pakua.h>
 #include "rigid_body.h"
 #include "inertia.h"
 
@@ -16,7 +17,7 @@ typename RigidBody<dim>::Vector RigidBody<dim>::initialize_mass_and_inertia(
   real volume = 0.0f;
   InertiaType inertia(0);
   TC_STATIC_IF(dim == 2) {
-    const std::vector<Element<dim>> &elements = this->mesh->elements;
+    const std::vector<Element<2>> &elements = this->mesh->elements;
     int n = (int)elements.size();
     if (this->codimensional) {
       // This shell
@@ -56,16 +57,16 @@ typename RigidBody<dim>::Vector RigidBody<dim>::initialize_mass_and_inertia(
                    (3 * sqr(ac[0]) + 3 * sqr(ac[1]) + sqr(ba[0]) + sqr(ba[1]) +
                     3 * ac[0] * ba[0] + 3 * ac[1] * ba[1]);
       }
-      inertia = inertia * (1.0_f / 12);
+      inertia *= 1.0_f / 12;
     }
-    TC_ASSERT_INFO(id(inertia) >= 0,
-                   "Rigid body inertia cannot be negative. (Make sure vertices "
-                   "are counter-clockwise)");
+    assert_info(inertia >= 0,
+                "Rigid body inertia cannot be negative. (Make sure vertices "
+                "are counter-clockwise)");
   }
   TC_STATIC_ELSE {
     // 3D
-    std::vector<Element<dim>> triangles = mesh->elements;
-    int n = (int)triangles.size();
+    std::vector<Element<3>> triangles = mesh->elements;
+    int n = triangles.size();
     if (codimensional) {
       TC_TRACE("Adding a codimensional (thin shell) rigid body");
       // Thin shell case
@@ -81,12 +82,12 @@ typename RigidBody<dim>::Vector RigidBody<dim>::initialize_mass_and_inertia(
                          triangles[i].v[2] - triangles[i].v[0])) *
             0.5_f;
         volume += local_volume;
-        local_center_of_mass *= (1.0_f / 3.0_f);
+        local_center_of_mass *= (1.0 / 3);
         center_of_mass += local_center_of_mass * local_volume;
       }
       center_of_mass /= volume;
 
-      id(inertia) = Matrix(0.0_f);
+      inertia = Matrix(0.0_f);
       for (int i = 0; i < n; i++) {
         // TODO: make it more accurate
         Vector verts[dim];
@@ -101,7 +102,7 @@ typename RigidBody<dim>::Vector RigidBody<dim>::initialize_mass_and_inertia(
                          triangles[i].v[2] - triangles[i].v[0])) *
             0.5_f;
 
-        id(inertia) +=
+        inertia +=
             (Matrix(dot(r, r)) - Matrix::outer_product(r, r)) * local_volume;
       }
     } else {
@@ -123,17 +124,17 @@ typename RigidBody<dim>::Vector RigidBody<dim>::initialize_mass_and_inertia(
       }
       center_of_mass /= volume;
 
-      inertia = id(Matrix(0.0_f));
+      inertia = Matrix(0.0_f);
       for (int i = 0; i < n; i++) {
         Vector verts[dim];
         for (int d = 0; d < dim; ++d) {
           verts[d] = triangles[i].v[d] - center_of_mass;
         }
-        inertia += -id(tetrahedron_inertia_tensor(id(Vector(0.0_f)), verts[0],
-                                                  verts[1], verts[2]));
+        inertia += -tetrahedron_inertia_tensor(Vector(0.0_f), verts[0],
+                                               verts[1], verts[2]);
       }
     }
-  }
+  };
   TC_STATIC_END_IF
 
   set_inertia(inertia * density);

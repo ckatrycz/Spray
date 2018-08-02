@@ -5,9 +5,9 @@
 
 #pragma once
 
+#include <taichi/common/interface.h>
 #include <vector>
 #include <string>
-#include "interface.h"
 
 TC_NAMESPACE_BEGIN
 
@@ -23,13 +23,5 @@ class Task : public Unit {
 };
 
 TC_INTERFACE(Task)
-
-#define TC_REGISTER_TASK(task)                                      \
-  class Task_##task : public taichi::Task {                         \
-    void run(const std::vector<std::string> &parameters) override { \
-      task(parameters);                                             \
-    }                                                               \
-  };                                                                \
-  TC_IMPLEMENTATION(Task, Task_##task, #task)
 
 TC_NAMESPACE_END

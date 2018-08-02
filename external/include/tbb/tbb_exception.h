@@ -1,64 +1,75 @@
 /*
-    Copyright (c) 2005-2017 Intel Corporation
+    Copyright 2005-2015 Intel Corporation.  All Rights Reserved.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of Threading Building Blocks. Threading Building Blocks is free software;
+    you can redistribute it and/or modify it under the terms of the GNU General Public License
+    version 2  as  published  by  the  Free Software Foundation.  Threading Building Blocks is
+    distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+    See  the GNU General Public License for more details.   You should have received a copy of
+    the  GNU General Public License along with Threading Building Blocks; if not, write to the
+    Free Software Foundation, Inc.,  51 Franklin St,  Fifth Floor,  Boston,  MA 02110-1301 USA
 
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
-
-
-
+    As a special exception,  you may use this file  as part of a free software library without
+    restriction.  Specifically,  if other files instantiate templates  or use macros or inline
+    functions from this file, or you compile this file and link it with other files to produce
+    an executable,  this file does not by itself cause the resulting executable to be covered
+    by the GNU General Public License. This exception does not however invalidate any other
+    reasons why the executable file might be covered by the GNU General Public License.
 */
 
 #ifndef __TBB_exception_H
 #define __TBB_exception_H
 
 #include "tbb_stddef.h"
+
+#if !TBB_USE_EXCEPTIONS && _MSC_VER
+    // Suppress "C++ exception handler used, but unwind semantics are not enabled" warning in STL headers
+    #pragma warning (push)
+    #pragma warning (disable: 4530)
+#endif
+
 #include <exception>
-#include <new>    // required for bad_alloc definition, operators new
+#include <new>    //required for bad_alloc definition, operators new
 #include <string> // required to construct std exception classes
+
+#if !TBB_USE_EXCEPTIONS && _MSC_VER
+    #pragma warning (pop)
+#endif
 
 namespace tbb {
 
 //! Exception for concurrent containers
 class bad_last_alloc : public std::bad_alloc {
 public:
-    const char* what() const throw() __TBB_override;
+    /*override*/ const char* what() const throw();
 #if __TBB_DEFAULT_DTOR_THROW_SPEC_BROKEN
-    ~bad_last_alloc() throw() __TBB_override {}
+    /*override*/ ~bad_last_alloc() throw() {}
 #endif
 };
 
 //! Exception for PPL locks
 class improper_lock : public std::exception {
 public:
-    const char* what() const throw() __TBB_override;
+    /*override*/ const char* what() const throw();
 };
 
 //! Exception for user-initiated abort
 class user_abort : public std::exception {
 public:
-    const char* what() const throw() __TBB_override;
+    /*override*/ const char* what() const throw();
 };
 
 //! Exception for missing wait on structured_task_group
 class missing_wait : public std::exception {
 public:
-    const char* what() const throw() __TBB_override;
+    /*override*/ const char* what() const throw();
 };
 
 //! Exception for repeated scheduling of the same task_handle
 class invalid_multiple_scheduling : public std::exception {
 public:
-    const char* what() const throw() __TBB_override;
+    /*override*/ const char* what() const throw();
 };
 
 namespace internal {
@@ -86,9 +97,9 @@ enum exception_id {
     eid_user_abort,
     eid_reserved1,
 #if __TBB_SUPPORTS_WORKERS_WAITING_IN_TERMINATE
-    // This id is used only from inside the library and only for support of CPF functionality.
+    // This id is used only inside library and only for support of CPF functionality.
     // So, if we drop the functionality, eid_reserved1 can be safely renamed and reused.
-    eid_blocking_thread_join_impossible = eid_reserved1,
+    eid_blocking_sch_init = eid_reserved1,
 #endif
     eid_bad_tagged_msg_cast,
     //! The last enumerator tracks the number of defined IDs. It must remain the last one.
@@ -153,25 +164,25 @@ public:
 
     //! Creates and returns pointer to the deep copy of this exception object.
     /** Move semantics is allowed. **/
-    virtual tbb_exception* move() throw() = 0;
+    virtual tbb_exception* move () throw() = 0;
 
     //! Destroys objects created by the move() method.
     /** Frees memory and calls destructor for this exception object.
         Can and must be used only on objects created by the move method. **/
-    virtual void destroy() throw() = 0;
+    virtual void destroy () throw() = 0;
 
     //! Throws this exception object.
     /** Make sure that if you have several levels of derivation from this interface
         you implement or override this method on the most derived level. The implementation
         is as simple as "throw *this;". Failure to do this will result in exception
         of a base class type being thrown. **/
-    virtual void throw_self() = 0;
+    virtual void throw_self () = 0;
 
     //! Returns RTTI name of the originally intercepted exception
     virtual const char* name() const throw() = 0;
 
     //! Returns the result of originally intercepted exception's what() method.
-    virtual const char* what() const throw() __TBB_override = 0;
+    virtual const char* what() const throw() = 0;
 
     /** Operator delete is provided only to allow using existing smart pointers
         with TBB exception objects obtained as the result of applying move()
@@ -192,19 +203,19 @@ public:
 class captured_exception : public tbb_exception
 {
 public:
-    captured_exception( const captured_exception& src )
+    captured_exception ( const captured_exception& src )
         : tbb_exception(src), my_dynamic(false)
     {
         set(src.my_exception_name, src.my_exception_info);
     }
 
-    captured_exception( const char* name_, const char* info )
+    captured_exception ( const char* name_, const char* info )
         : my_dynamic(false)
     {
         set(name_, info);
     }
 
-    __TBB_EXPORTED_METHOD ~captured_exception() throw();
+    __TBB_EXPORTED_METHOD ~captured_exception () throw();
 
     captured_exception& operator= ( const captured_exception& src ) {
         if ( this != &src ) {
@@ -214,25 +225,30 @@ public:
         return *this;
     }
 
-    captured_exception* __TBB_EXPORTED_METHOD move() throw() __TBB_override;
+    /*override*/
+    captured_exception* __TBB_EXPORTED_METHOD move () throw();
 
-    void __TBB_EXPORTED_METHOD destroy() throw() __TBB_override;
+    /*override*/
+    void __TBB_EXPORTED_METHOD destroy () throw();
 
-    void throw_self() __TBB_override { __TBB_THROW(*this); }
+    /*override*/
+    void throw_self () { __TBB_THROW(*this); }
 
-    const char* __TBB_EXPORTED_METHOD name() const throw() __TBB_override;
+    /*override*/
+    const char* __TBB_EXPORTED_METHOD name() const throw();
 
-    const char* __TBB_EXPORTED_METHOD what() const throw() __TBB_override;
+    /*override*/
+    const char* __TBB_EXPORTED_METHOD what() const throw();
 
-    void __TBB_EXPORTED_METHOD set( const char* name, const char* info ) throw();
-    void __TBB_EXPORTED_METHOD clear() throw();
+    void __TBB_EXPORTED_METHOD set ( const char* name, const char* info ) throw();
+    void __TBB_EXPORTED_METHOD clear () throw();
 
 private:
-    //! Used only by method move().
+    //! Used only by method clone().
     captured_exception() {}
 
-    //! Functionally equivalent to {captured_exception e(name,info); return e.move();}
-    static captured_exception* allocate( const char* name, const char* info );
+    //! Functionally equivalent to {captured_exception e(name,info); return e.clone();}
+    static captured_exception* allocate ( const char* name, const char* info );
 
     bool my_dynamic;
     const char* my_exception_name;
@@ -250,7 +266,7 @@ class movable_exception : public tbb_exception
     typedef movable_exception<ExceptionData> self_type;
 
 public:
-    movable_exception( const ExceptionData& data_ )
+    movable_exception ( const ExceptionData& data_ )
         : my_exception_data(data_)
         , my_dynamic(false)
         , my_exception_name(
@@ -262,14 +278,14 @@ public:
         )
     {}
 
-    movable_exception( const movable_exception& src ) throw ()
+    movable_exception ( const movable_exception& src ) throw ()
         : tbb_exception(src)
         , my_exception_data(src.my_exception_data)
         , my_dynamic(false)
         , my_exception_name(src.my_exception_name)
     {}
 
-    ~movable_exception() throw() {}
+    ~movable_exception () throw() {}
 
     const movable_exception& operator= ( const movable_exception& src ) {
         if ( this != &src ) {
@@ -279,15 +295,16 @@ public:
         return *this;
     }
 
-    ExceptionData& data() throw() { return my_exception_data; }
+    ExceptionData& data () throw() { return my_exception_data; }
 
-    const ExceptionData& data() const throw() { return my_exception_data; }
+    const ExceptionData& data () const throw() { return my_exception_data; }
 
-    const char* name() const throw() __TBB_override { return my_exception_name; }
+    /*override*/ const char* name () const throw() { return my_exception_name; }
 
-    const char* what() const throw() __TBB_override { return "tbb::movable_exception"; }
+    /*override*/ const char* what () const throw() { return "tbb::movable_exception"; }
 
-    movable_exception* move() throw() __TBB_override {
+    /*override*/
+    movable_exception* move () throw() {
         void* e = internal::allocate_via_handler_v3(sizeof(movable_exception));
         if ( e ) {
             ::new (e) movable_exception(*this);
@@ -295,14 +312,16 @@ public:
         }
         return (movable_exception*)e;
     }
-    void destroy() throw() __TBB_override {
+    /*override*/
+    void destroy () throw() {
         __TBB_ASSERT ( my_dynamic, "Method destroy can be called only on dynamically allocated movable_exceptions" );
         if ( my_dynamic ) {
             this->~movable_exception();
             internal::deallocate_via_handler_v3(this);
         }
     }
-    void throw_self() __TBB_override { __TBB_THROW( *this ); }
+    /*override*/
+    void throw_self () { __TBB_THROW( *this ); }
 
 protected:
     //! User data
@@ -322,26 +341,26 @@ namespace internal {
 
 //! Exception container that preserves the exact copy of the original exception
 /** This class can be used only when the appropriate runtime support (mandated
-    by C++11) is present **/
+    by C++0x) is present **/
 class tbb_exception_ptr {
     std::exception_ptr  my_ptr;
 
 public:
-    static tbb_exception_ptr* allocate();
-    static tbb_exception_ptr* allocate( const tbb_exception& tag );
+    static tbb_exception_ptr* allocate ();
+    static tbb_exception_ptr* allocate ( const tbb_exception& tag );
     //! This overload uses move semantics (i.e. it empties src)
-    static tbb_exception_ptr* allocate( captured_exception& src );
+    static tbb_exception_ptr* allocate ( captured_exception& src );
 
     //! Destroys this objects
     /** Note that objects of this type can be created only by the allocate() method. **/
-    void destroy() throw();
+    void destroy () throw();
 
     //! Throws the contained exception .
-    void throw_self() { std::rethrow_exception(my_ptr); }
+    void throw_self () { std::rethrow_exception(my_ptr); }
 
 private:
-    tbb_exception_ptr( const std::exception_ptr& src ) : my_ptr(src) {}
-    tbb_exception_ptr( const captured_exception& src ) :
+    tbb_exception_ptr ( const std::exception_ptr& src ) : my_ptr(src) {}
+    tbb_exception_ptr ( const captured_exception& src ) :
         #if __TBB_MAKE_EXCEPTION_PTR_PRESENT
             my_ptr(std::make_exception_ptr(src))  // the final function name in C++11
         #else

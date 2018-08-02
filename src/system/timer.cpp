@@ -20,7 +20,7 @@ std::map<std::string, std::pair<double, int>> Time::Timer::memo;
 std::map<std::string, double> Time::FPSCounter::last_refresh;
 std::map<std::string, int> Time::FPSCounter::counter;
 
-#if defined(TC_PLATFORM_UNIX)
+#ifndef _WIN64
 
 double Time::get_time() {
   struct timeval tv;
@@ -63,10 +63,6 @@ void Time::usleep(double us) {
 #else
   ::usleep(us);
 #endif
-}
-
-void Time::sleep(double s) {
-  Time::usleep(s * 1e6_f64);
 }
 
 double Time::Timer::get_time() {

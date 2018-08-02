@@ -7,9 +7,9 @@
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #include <implicit_qr_svd/Tools.h>
 #include <implicit_qr_svd/ImplicitQRSVD.h>
-#include "eigen.h"
-#pragma GCC diagnostic pop
+#include <taichi/math/eigen.h>
 #include <taichi/testing.h>
+#pragma GCC diagnostic pop
 #include "svd.h"
 
 //#define TC_USE_EIGEN_SVD
@@ -28,8 +28,8 @@ void eigen_svd(const MatrixND<dim, T> &m,
   s = MatrixND<dim, T>(0.0_f);
   for (int i = 0; i < dim; ++i)
     s[i][i] = e_svd.singularValues()(i);
-  u = from_eigen<dim, T>(e_svd.matrixU());
-  v = from_eigen<dim, T>(e_svd.matrixV());
+  u = from_eigen(e_svd.matrixU());
+  v = from_eigen(e_svd.matrixV());
 }
 
 template <int dim, typename T>
@@ -53,6 +53,7 @@ void imp_svd(const MatrixND<dim, T> &m_,
              MatrixND<dim, T> &s,
              MatrixND<dim, T> &v) {
   using Matrix = MatrixND<dim, T>;
+  using Vector = VectorND<dim, T>;
   Matrix m = m_;
   TC_STATIC_IF(dim == 2) {
     if ((m - Matrix(m.diag())).frobenius_norm2() < 1e-7f) {
@@ -83,8 +84,8 @@ void imp_svd(const MatrixND<dim, T> &m_,
     for (int i = 0; i < dim; i++) {
       s[i][i] = S(i, 0);
     }
-    u = from_eigen<dim, T>(U);
-    v = from_eigen<dim, T>(V);
+    u = from_eigen(U);
+    v = from_eigen(V);
   }
   TC_STATIC_END_IF
 }
@@ -123,6 +124,8 @@ void svd_rot(const MatrixND<dim, T> &m,
              MatrixND<dim, T> &u,
              MatrixND<dim, T> &sig,
              MatrixND<dim, T> &v) {
+  using Matrix = MatrixND<dim, T>;
+  using Vector = VectorND<dim, T>;
   TC_STATIC_IF(dim == 3) {
     /*
     if ((m - Matrix(m.diag())).frobenius_norm2() < static_cast<T>(1e-7)) {

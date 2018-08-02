@@ -9,8 +9,6 @@
 
 TC_NAMESPACE_BEGIN
 
-#define CV(x)
-
 class BarnesHutSummation {
  public:
   struct Particle {
@@ -31,6 +29,8 @@ class BarnesHutSummation {
       ret.mass = mass + o.mass;
       ret.position =
           (position * mass + o.position * o.mass) * (1.0_f / ret.mass);
+      CV(ret.position);
+      CV(ret.mass);
       return ret;
     }
   };
@@ -317,9 +317,9 @@ class NBody : public Simulation3D {
     real vel_scale = config.get<real>("vel_scale");
     for (int i = 0; i < num_particles; i++) {
       Vector3 p(rand(), rand(), rand());
-      Vector3 v = Vector3(p.y, p.z, p.x) - Vector3(0.5_f);
+      Vector3 v = Vector3(p.y, p.z, p.x) - Vector3(0.5f);
       v *= Vector3(vel_scale);
-      Vector3 c(0.5_f, 0.7_f, 0.4_f);
+      Vector3 c(0.5, 0.7, 0.4);
       particles.push_back(Particle(p, v, c));
     }
   }
@@ -329,7 +329,7 @@ class NBody : public Simulation3D {
     render_particles.reserve(particles.size());
     for (auto &p : particles) {
       render_particles.push_back(
-          RenderParticle(p.position - Vector3(0.5_f), p.color));
+          RenderParticle(p.position - Vector3(0.5f), p.color));
     }
     return render_particles;
   }

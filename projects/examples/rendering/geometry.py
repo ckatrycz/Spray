@@ -4,9 +4,11 @@ import taichi as tc
 
 
 def create_scene():
+  downsample = 2
+  width, height = 800 / downsample, 800 / downsample
   camera = tc.Camera(
       'pinhole',
-      res=(800, 800),
+      res=(width, height),
       fov=40,
       origin=(0, 10, 40),
       look_at=(0, 0, 0),
@@ -60,5 +62,8 @@ def create_scene():
 
 
 if __name__ == '__main__':
-  renderer = tc.Renderer(scene=create_scene())
-  renderer.render()
+  renderer = tc.Renderer(output_dir='geometry', overwrite=True)
+  renderer.initialize(preset='pt', scene=create_scene())
+  renderer.set_post_processor(
+      tc.post_process.LDRDisplay(exposure=2, bloom_radius=0.0))
+  renderer.render(10000, 20)

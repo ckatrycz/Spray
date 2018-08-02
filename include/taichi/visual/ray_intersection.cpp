@@ -24,6 +24,25 @@ class BruteForceRayIntersection : public RayIntersection {
   virtual bool occlude(Ray &ray) override;
 };
 
+class EmbreeRayIntersection : public RayIntersection {
+ public:
+  void clear() override;
+
+  void build() override;
+
+  void query(Ray &ray) override;
+
+  void add_triangle(Triangle &triangle) override;
+
+  virtual bool occlude(Ray &ray) override;
+
+ private:
+  std::vector<Triangle> triangles;
+  RTCDevice rtc_device;
+  RTCScene rtc_scene;
+  int geom_id;
+};
+
 void BruteForceRayIntersection::clear() {
   triangles.clear();
 }
@@ -43,6 +62,12 @@ void BruteForceRayIntersection::add_triangle(Triangle &triangle) {
 
 bool BruteForceRayIntersection::occlude(Ray &ray) {
   return false;
+}
+
+void EmbreeRayIntersection::clear() {
+  triangles.clear();
+  rtcDeleteScene(rtc_scene);
+  rtcDeleteDevice(rtc_device);
 }
 
 /* error reporting function */
@@ -83,29 +108,6 @@ void error_handler(const RTCError code, const char *str = nullptr) {
   assert(false);
 }
 
-TC_IMPLEMENTATION(RayIntersection, BruteForceRayIntersection, "bf");
-
-#if !defined(TC_DISABLE_EMBREE)
-class EmbreeRayIntersection : public RayIntersection {
- public:
-  void clear() override;
-
-  void build() override;
-
-  void query(Ray &ray) override;
-
-  void add_triangle(Triangle &triangle) override;
-
-  virtual bool occlude(Ray &ray) override;
-
- private:
-  std::vector<Triangle> triangles;
-  RTCDevice rtc_device;
-  RTCScene rtc_scene;
-  int geom_id;
-};
-
-
 void EmbreeRayIntersection::build() {
   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
@@ -122,17 +124,17 @@ void EmbreeRayIntersection::build() {
       rtcNewTriangleMesh(rtc_scene, geom_flags, num_triangles, num_vertices, 1);
 
   struct RTCVertex {
-    float32 x, y, z, a;
+    float x, y, z, a;
   };
   struct RTCTriangle {
-    int32 v[3];
+    int v[3];
   };
 
   RTCVertex *vertices =
       (RTCVertex *)rtcMapBuffer(rtc_scene, geom_id, RTC_VERTEX_BUFFER);
   for (int i = 0; i < num_triangles; i++) {
     for (int k = 0; k < 3; k++) {
-      *(Vector4f *)(&vertices[i * 3 + k]) = Vector4(triangles[i].v[k], 0).cast<float32>();
+      *(Vector4 *)(&vertices[i * 3 + k]) = Vector4(triangles[i].v[k], 0);
     }
   }
   rtcUnmapBuffer(rtc_scene, geom_id, RTC_VERTEX_BUFFER);
@@ -152,8 +154,8 @@ void EmbreeRayIntersection::build() {
 
 void EmbreeRayIntersection::query(Ray &ray) {
   RTCRay rtc_ray;
-  *reinterpret_cast<Vector3f *>(rtc_ray.org) = ray.orig.cast<float32>();
-  *reinterpret_cast<Vector3f *>(rtc_ray.dir) = ray.dir.cast<float32>();
+  *reinterpret_cast<Vector3 *>(rtc_ray.org) = ray.orig;
+  *reinterpret_cast<Vector3 *>(rtc_ray.dir) = ray.dir;
   rtc_ray.tnear = eps * 10;
   rtc_ray.tfar = Ray::DIST_INFINITE;
   rtc_ray.time = 0.0_f;
@@ -180,8 +182,8 @@ void EmbreeRayIntersection::add_triangle(Triangle &triangle) {
 bool EmbreeRayIntersection::occlude(Ray &ray) {
   assert(false);  // TODO
   RTCRay rtc_ray;
-  *(Vector3f *)rtc_ray.org = ray.orig.cast<float32>();
-  *(Vector3f *)rtc_ray.dir = ray.dir.cast<float32>();
+  *(Vector3 *)rtc_ray.org = ray.orig;
+  *(Vector3 *)rtc_ray.dir = ray.dir;
   rtc_ray.tnear = eps * 10;
   rtc_ray.tfar = ray.dist;
   rtc_ray.time = 0.0_f;
@@ -197,14 +199,8 @@ bool EmbreeRayIntersection::occlude(Ray &ray) {
   return false;
 }
 
-void EmbreeRayIntersection::clear() {
-  triangles.clear();
-  rtcDeleteScene(rtc_scene);
-  rtcDeleteDevice(rtc_device);
-}
-
+TC_IMPLEMENTATION(RayIntersection, BruteForceRayIntersection, "bf");
 
 TC_IMPLEMENTATION(RayIntersection, EmbreeRayIntersection, "embree");
-#endif
 
 TC_NAMESPACE_END

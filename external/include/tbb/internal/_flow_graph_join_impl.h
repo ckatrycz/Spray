@@ -1,21 +1,21 @@
 /*
-    Copyright (c) 2005-2017 Intel Corporation
+    Copyright 2005-2015 Intel Corporation.  All Rights Reserved.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    This file is part of Threading Building Blocks. Threading Building Blocks is free software;
+    you can redistribute it and/or modify it under the terms of the GNU General Public License
+    version 2  as  published  by  the  Free Software Foundation.  Threading Building Blocks is
+    distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+    See  the GNU General Public License for more details.   You should have received a copy of
+    the  GNU General Public License along with Threading Building Blocks; if not, write to the
+    Free Software Foundation, Inc.,  51 Franklin St,  Fifth Floor,  Boston,  MA 02110-1301 USA
 
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
-
-
-
+    As a special exception,  you may use this file  as part of a free software library without
+    restriction.  Specifically,  if other files instantiate templates  or use macros or inline
+    functions from this file, or you compile this file and link it with other files to produce
+    an executable,  this file does not by itself cause the resulting executable to be covered
+    by the GNU General Public License. This exception does not however invalidate any other
+    reasons why the executable file might be covered by the GNU General Public License.
 */
 
 #ifndef __TBB__flow_graph_join_impl_H
@@ -27,21 +27,21 @@
 
 namespace internal {
 
-    struct forwarding_base : tbb::internal::no_assign {
-        forwarding_base(graph &g) : graph_ref(g) {}
+    struct forwarding_base {
+        forwarding_base(graph &g) : graph_pointer(&g) {}
         virtual ~forwarding_base() {}
         // decrement_port_count may create a forwarding task.  If we cannot handle the task
         // ourselves, ask decrement_port_count to deal with it.
         virtual task * decrement_port_count(bool handle_task) = 0;
         virtual void increment_port_count() = 0;
         // moved here so input ports can queue tasks
-        graph& graph_ref;
+        graph* graph_pointer;
     };
 
     // specialization that lets us keep a copy of the current_key for building results.
     // KeyType can be a reference type.
     template<typename KeyType>
-    struct matching_forwarding_base : public forwarding_base {
+    struct matching_forwarding_base :public forwarding_base {
         typedef typename tbb::internal::strip<KeyType>::type current_key_type;
         matching_forwarding_base(graph &g) : forwarding_base(g) { }
         virtual task * increment_key_count(current_key_type const & /*t*/, bool /*handle_task*/) = 0; // {return NULL;}
@@ -213,7 +213,7 @@ namespace internal {
     class reserving_port : public receiver<T> {
     public:
         typedef T input_type;
-        typedef typename receiver<input_type>::predecessor_type predecessor_type;
+        typedef sender<T> predecessor_type;
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
         typedef typename receiver<input_type>::predecessor_list_type predecessor_list_type;
         typedef typename receiver<input_type>::built_predecessors_type built_predecessors_type;
@@ -320,12 +320,8 @@ namespace internal {
         template< typename R, typename B > friend class run_and_put_task;
         template<typename X, typename Y> friend class internal::broadcast_cache;
         template<typename X, typename Y> friend class internal::round_robin_cache;
-        task *try_put_task( const T & ) __TBB_override {
+        task *try_put_task( const T & ) {
             return NULL;
-        }
-
-        graph& graph_reference() __TBB_override {
-            return my_join->graph_ref;
         }
 
     public:
@@ -350,14 +346,14 @@ namespace internal {
         }
 
         //! Add a predecessor
-        bool register_predecessor( predecessor_type &src ) __TBB_override {
+        bool register_predecessor( sender<T> &src ) {
             reserving_port_operation op_data(src, reg_pred);
             my_aggregator.execute(&op_data);
             return op_data.status == SUCCEEDED;
         }
 
         //! Remove a predecessor
-        bool remove_predecessor( predecessor_type &src ) __TBB_override {
+        bool remove_predecessor( sender<T> &src ) {
             reserving_port_operation op_data(src, rem_pred);
             my_aggregator.execute(&op_data);
             return op_data.status == SUCCEEDED;
@@ -383,24 +379,24 @@ namespace internal {
         }
 
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
-        built_predecessors_type &built_predecessors() __TBB_override { return my_predecessors.built_predecessors(); }
-        void internal_add_built_predecessor(predecessor_type &src) __TBB_override {
+        /*override*/ built_predecessors_type &built_predecessors() { return my_predecessors.built_predecessors(); }
+        /*override*/void internal_add_built_predecessor(predecessor_type &src) {
             reserving_port_operation op_data(src, add_blt_pred);
             my_aggregator.execute(&op_data);
         }
 
-        void internal_delete_built_predecessor(predecessor_type &src) __TBB_override {
+        /*override*/void internal_delete_built_predecessor(predecessor_type &src) {
             reserving_port_operation op_data(src, del_blt_pred);
             my_aggregator.execute(&op_data);
         }
 
-        size_t predecessor_count() __TBB_override {
+        /*override*/size_t predecessor_count() {
             reserving_port_operation op_data(blt_pred_cnt);
             my_aggregator.execute(&op_data);
             return op_data.cnt_val;
         }
 
-        void copy_predecessors(predecessor_list_type &l) __TBB_override {
+        /*override*/void copy_predecessors(predecessor_list_type &l) {
             reserving_port_operation op_data(blt_pred_cpy);
             op_data.plist = &l;
             my_aggregator.execute(&op_data);
@@ -412,7 +408,7 @@ namespace internal {
 
 #endif  /* TBB_PREVIEW_FLOW_GRAPH_FEATURES */
 
-        void reset_receiver( reset_flags f) __TBB_override {
+        /*override*/void reset_receiver( reset_flags f) {
             if(f & rf_clear_edges) my_predecessors.clear();
             else
             my_predecessors.reset();
@@ -431,7 +427,7 @@ namespace internal {
     class queueing_port : public receiver<T>, public item_buffer<T> {
     public:
         typedef T input_type;
-        typedef typename receiver<input_type>::predecessor_type predecessor_type;
+        typedef sender<T> predecessor_type;
         typedef queueing_port<T> class_type;
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
         typedef typename receiver<input_type>::built_predecessors_type built_predecessors_type;
@@ -453,7 +449,7 @@ namespace internal {
             T my_val;
             T *my_arg;
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
-            predecessor_type *pred;
+            sender<T> *pred;
             size_t cnt_val;
             predecessor_list_type *plist;
 #endif
@@ -498,7 +494,7 @@ namespace internal {
                     break;
                 case get__item:
                     if(!this->buffer_empty()) {
-                        *(current->my_arg) = this->front();
+                        this->copy_front(*(current->my_arg));
                         __TBB_store_with_release(current->status, SUCCEEDED);
                     }
                     else {
@@ -540,16 +536,12 @@ namespace internal {
         template< typename R, typename B > friend class run_and_put_task;
         template<typename X, typename Y> friend class internal::broadcast_cache;
         template<typename X, typename Y> friend class internal::round_robin_cache;
-        task *try_put_task(const T &v) __TBB_override {
+        /*override*/task *try_put_task(const T &v) {
             queueing_port_operation op_data(v, try__put_task);
             my_aggregator.execute(&op_data);
             __TBB_ASSERT(op_data.status == SUCCEEDED || !op_data.bypass_t, "inconsistent return from aggregator");
             if(!op_data.bypass_t) return SUCCESSFULLY_ENQUEUED;
             return op_data.bypass_t;
-        }
-
-        graph& graph_reference() __TBB_override {
-            return my_join->graph_ref;
         }
 
     public:
@@ -586,41 +578,41 @@ namespace internal {
         }
 
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
-        built_predecessors_type &built_predecessors() __TBB_override { return my_built_predecessors; }
+        /*override*/ built_predecessors_type &built_predecessors() { return my_built_predecessors; }
 
-        void internal_add_built_predecessor(predecessor_type &p) __TBB_override {
+        /*override*/void internal_add_built_predecessor(sender<T> &p) {
             queueing_port_operation op_data(add_blt_pred);
             op_data.pred = &p;
             my_aggregator.execute(&op_data);
         }
 
-        void internal_delete_built_predecessor(predecessor_type &p) __TBB_override {
+        /*override*/void internal_delete_built_predecessor(sender<T> &p) {
             queueing_port_operation op_data(del_blt_pred);
             op_data.pred = &p;
             my_aggregator.execute(&op_data);
         }
 
-        size_t predecessor_count() __TBB_override {
+        /*override*/size_t predecessor_count() {
             queueing_port_operation op_data(blt_pred_cnt);
             my_aggregator.execute(&op_data);
             return op_data.cnt_val;
         }
 
-        void copy_predecessors(predecessor_list_type &l) __TBB_override {
+        /*override*/void copy_predecessors(predecessor_list_type &l) {
             queueing_port_operation op_data(blt_pred_cpy);
             op_data.plist = &l;
             my_aggregator.execute(&op_data);
         }
 
         void extract_receiver() {
-            item_buffer<T>::reset();
+            item_buffer<T>::reset(); 
             my_built_predecessors.receiver_extract(*this);
         }
 #endif  /* TBB_PREVIEW_FLOW_GRAPH_FEATURES */
 
-        void reset_receiver(reset_flags f) __TBB_override {
+        /*override*/void reset_receiver(reset_flags f) { 
             tbb::internal::suppress_unused_warning(f);
-            item_buffer<T>::reset();
+            item_buffer<T>::reset(); 
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
             if (f & rf_clear_edges)
                 my_built_predecessors.clear();
@@ -630,7 +622,7 @@ namespace internal {
     private:
         forwarding_base *my_join;
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
-        edge_container<predecessor_type> my_built_predecessors;
+        edge_container<sender<T> > my_built_predecessors;
 #endif
     };  // queueing_port
 
@@ -663,7 +655,7 @@ namespace internal {
         typedef typename TraitsType::T input_type;
         typedef typename TraitsType::K key_type;
         typedef typename tbb::internal::strip<key_type>::type noref_key_type;
-        typedef typename receiver<input_type>::predecessor_type predecessor_type;
+        typedef sender<input_type> predecessor_type;
         typedef typename TraitsType::TtoK type_to_key_func_type;
         typedef typename TraitsType::KHash hash_compare_type;
         typedef hash_buffer< key_type, input_type, type_to_key_func_type, hash_compare_type > buffer_type;
@@ -755,7 +747,7 @@ namespace internal {
         template< typename R, typename B > friend class run_and_put_task;
         template<typename X, typename Y> friend class internal::broadcast_cache;
         template<typename X, typename Y> friend class internal::round_robin_cache;
-        task *try_put_task(const input_type& v) __TBB_override {
+        /*override*/task *try_put_task(const input_type& v) {
             key_matching_port_operation op_data(v, try__put);
             task *rtask = NULL;
             my_aggregator.execute(&op_data);
@@ -765,10 +757,6 @@ namespace internal {
                 if(!rtask) rtask = SUCCESSFULLY_ENQUEUED;
             }
             return rtask;
-        }
-
-        graph& graph_reference() __TBB_override {
-            return my_join->graph_ref;
         }
 
     public:
@@ -802,27 +790,27 @@ namespace internal {
         }
 
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
-        built_predecessors_type &built_predecessors() __TBB_override { return my_built_predecessors; }
-
-        void internal_add_built_predecessor(predecessor_type &p) __TBB_override {
+        /*override*/built_predecessors_type &built_predecessors() { return my_built_predecessors; }
+        
+        /*override*/void internal_add_built_predecessor(sender<input_type> &p) {
             key_matching_port_operation op_data(add_blt_pred);
             op_data.pred = &p;
             my_aggregator.execute(&op_data);
         }
 
-        void internal_delete_built_predecessor(predecessor_type &p) __TBB_override {
+        /*override*/void internal_delete_built_predecessor(sender<input_type> &p) {
             key_matching_port_operation op_data(del_blt_pred);
             op_data.pred = &p;
             my_aggregator.execute(&op_data);
         }
 
-        size_t predecessor_count() __TBB_override {
+        /*override*/size_t predecessor_count() {
             key_matching_port_operation op_data(blt_pred_cnt);
             my_aggregator.execute(&op_data);
             return op_data.cnt_val;
         }
 
-        void copy_predecessors(predecessor_list_type &l) __TBB_override {
+        /*override*/void copy_predecessors(predecessor_list_type &l) {
             key_matching_port_operation op_data(blt_pred_cpy);
             op_data.plist = &l;
             my_aggregator.execute(&op_data);
@@ -843,9 +831,9 @@ namespace internal {
             my_built_predecessors.receiver_extract(*this);
         }
 #endif
-        void reset_receiver(reset_flags f ) __TBB_override {
+        /*override*/void reset_receiver(reset_flags f ) { 
             tbb::internal::suppress_unused_warning(f);
-            buffer_type::reset();
+            buffer_type::reset(); 
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
            if (f & rf_clear_edges)
               my_built_predecessors.clear();
@@ -883,25 +871,25 @@ namespace internal {
             join_helper<N>::set_join_node_pointer(my_inputs, this);
         }
 
-        join_node_FE(const join_node_FE& other) : forwarding_base((other.forwarding_base::graph_ref)), my_node(NULL) {
+        join_node_FE(const join_node_FE& other) : forwarding_base(*(other.forwarding_base::graph_pointer)), my_node(NULL) {
             ports_with_no_inputs = N;
             join_helper<N>::set_join_node_pointer(my_inputs, this);
         }
 
         void set_my_node(base_node_type *new_my_node) { my_node = new_my_node; }
 
-       void increment_port_count() __TBB_override {
+       void increment_port_count() {
             ++ports_with_no_inputs;
         }
 
         // if all input_ports have predecessors, spawn forward to try and consume tuples
-        task * decrement_port_count(bool handle_task) __TBB_override {
+        task * decrement_port_count(bool handle_task) {
             if(ports_with_no_inputs.fetch_and_decrement() == 1) {
-                if(internal::is_graph_active(this->graph_ref)) {
-                    task *rtask = new ( task::allocate_additional_child_of( *(this->graph_ref.root_task()) ) )
+                if(this->graph_pointer->is_active()) {
+                    task *rtask = new ( task::allocate_additional_child_of( *(this->graph_pointer->root_task()) ) )
                         forward_task_bypass<base_node_type>(*my_node);
                     if(!handle_task) return rtask;
-                    internal::spawn_in_graph_arena(this->graph_ref, *rtask);
+                    FLOW_SPAWN(*rtask);
                 }
             }
             return NULL;
@@ -961,7 +949,7 @@ namespace internal {
             join_helper<N>::set_join_node_pointer(my_inputs, this);
         }
 
-        join_node_FE(const join_node_FE& other) : forwarding_base((other.forwarding_base::graph_ref)), my_node(NULL) {
+        join_node_FE(const join_node_FE& other) : forwarding_base(*(other.forwarding_base::graph_pointer)), my_node(NULL) {
             ports_with_no_items = N;
             join_helper<N>::set_join_node_pointer(my_inputs, this);
         }
@@ -974,20 +962,20 @@ namespace internal {
         }
 
         // if all input_ports have items, spawn forward to try and consume tuples
-        task * decrement_port_count(bool handle_task) __TBB_override
+        task * decrement_port_count(bool handle_task)
         {
             if(ports_with_no_items.fetch_and_decrement() == 1) {
-                if(internal::is_graph_active(this->graph_ref)) {
-                    task *rtask = new ( task::allocate_additional_child_of( *(this->graph_ref.root_task()) ) )
+                if(this->graph_pointer->is_active()) {
+                    task *rtask = new ( task::allocate_additional_child_of( *(this->graph_pointer->root_task()) ) )
                         forward_task_bypass <base_node_type>(*my_node);
                     if(!handle_task) return rtask;
-                    internal::spawn_in_graph_arena(this->graph_ref, *rtask);
+                    FLOW_SPAWN( *rtask);
                 }
             }
             return NULL;
         }
 
-        void increment_port_count() __TBB_override { __TBB_ASSERT(false, NULL); }  // should never be called
+        void increment_port_count() { __TBB_ASSERT(false, NULL); }  // should never be called
 
         input_type &input_ports() { return my_inputs; }
 
@@ -1096,16 +1084,16 @@ namespace internal {
         task * fill_output_buffer(unref_key_type &t, bool should_enqueue, bool handle_task) {
             output_type l_out;
             task *rtask = NULL;
-            bool do_fwd = should_enqueue && this->buffer_empty() && internal::is_graph_active(this->graph_ref);
+            bool do_fwd = should_enqueue && this->buffer_empty() && this->graph_pointer->is_active();
             this->current_key = t;
             this->delete_with_key(this->current_key);   // remove the key
             if(join_helper<N>::get_items(my_inputs, l_out)) {  //  <== call back
                 this->push_back(l_out);
                 if(do_fwd) {  // we enqueue if receiving an item from predecessor, not if successor asks for item
-                    rtask = new ( task::allocate_additional_child_of( *(this->graph_ref.root_task()) ) )
+                    rtask = new ( task::allocate_additional_child_of( *(this->graph_pointer->root_task()) ) )
                         forward_task_bypass<base_node_type>(*my_node);
                     if(handle_task) {
-                        internal::spawn_in_graph_arena(this->graph_ref, *rtask);
+                        FLOW_SPAWN(*rtask);
                         rtask = NULL;
                     }
                     do_fwd = false;
@@ -1160,7 +1148,7 @@ namespace internal {
                         __TBB_store_with_release(current->status, FAILED);
                     }
                     else {
-                        *(current->my_output) = this->front();
+                        this->copy_front(*(current->my_output));
                         __TBB_store_with_release(current->status, SUCCEEDED);
                     }
                     break;
@@ -1179,7 +1167,7 @@ namespace internal {
             this->set_key_func(cfb);
         }
 
-        join_node_FE(const join_node_FE& other) : forwarding_base_type((other.forwarding_base_type::graph_ref)), key_to_count_buffer_type(),
+        join_node_FE(const join_node_FE& other) : forwarding_base_type(*(other.forwarding_base_type::graph_pointer)), key_to_count_buffer_type(),
         output_buffer_type() {
             my_node = NULL;
             join_helper<N>::set_join_node_pointer(my_inputs, this);
@@ -1200,15 +1188,15 @@ namespace internal {
 
         // if all input_ports have items, spawn forward to try and consume tuples
         // return a task if we are asked and did create one.
-        task *increment_key_count(unref_key_type const & t, bool handle_task) __TBB_override {  // called from input_ports
+        /*override*/ task *increment_key_count(unref_key_type const & t, bool handle_task) {  // called from input_ports
             key_matching_FE_operation op_data(t, handle_task, inc_count);
             my_aggregator.execute(&op_data);
             return op_data.bypass_t;
         }
 
-        task *decrement_port_count(bool /*handle_task*/) __TBB_override { __TBB_ASSERT(false, NULL); return NULL; }
+        /*override*/ task *decrement_port_count(bool /*handle_task*/) { __TBB_ASSERT(false, NULL); return NULL; }
 
-        void increment_port_count() __TBB_override { __TBB_ASSERT(false, NULL); }  // should never be called
+        void increment_port_count() { __TBB_ASSERT(false, NULL); }  // should never be called
 
         input_type &input_ports() { return my_inputs; }
 
@@ -1268,7 +1256,7 @@ namespace internal {
     public:
         typedef OutputTuple output_type;
 
-        typedef typename sender<output_type>::successor_type successor_type;
+        typedef receiver<output_type> successor_type;
         typedef join_node_FE<JP, InputTuple, OutputTuple> input_ports_type;
         using input_ports_type::tuple_build_may_succeed;
         using input_ports_type::try_to_make_tuple;
@@ -1321,11 +1309,11 @@ namespace internal {
                 switch(current->type) {
                 case reg_succ: {
                         my_successors.register_successor(*(current->my_succ));
-                        if(tuple_build_may_succeed() && !forwarder_busy && internal::is_graph_active(my_graph)) {
-                            task *rtask = new ( task::allocate_additional_child_of(*(my_graph.root_task())) )
+                        if(tuple_build_may_succeed() && !forwarder_busy && this->graph_node::my_graph.is_active()) {
+                            task *rtask = new ( task::allocate_additional_child_of(*(this->graph_node::my_graph.root_task())) )
                                     forward_task_bypass
                                     <join_node_base<JP,InputTuple,OutputTuple> >(*this);
-                            internal::spawn_in_graph_arena(my_graph, *rtask);
+                            FLOW_SPAWN(*rtask);
                             forwarder_busy = true;
                         }
                         __TBB_store_with_release(current->status, SUCCEEDED);
@@ -1354,7 +1342,7 @@ namespace internal {
                                 build_succeeded = try_to_make_tuple(out);  // fetch front_end of queue
                                 if(build_succeeded) {
                                     task *new_task = my_successors.try_put_task(out);
-                                    last_task = combine_tasks(my_graph, last_task, new_task);
+                                    last_task = combine_tasks(last_task, new_task);
                                     if(new_task) {
                                         tuple_accepted();
                                     }
@@ -1414,44 +1402,44 @@ namespace internal {
             my_aggregator.initialize_handler(handler_type(this));
         }
 
-        bool register_successor(successor_type &r) __TBB_override {
+        bool register_successor(successor_type &r) {
             join_node_base_operation op_data(r, reg_succ);
             my_aggregator.execute(&op_data);
             return op_data.status == SUCCEEDED;
         }
 
-        bool remove_successor( successor_type &r) __TBB_override {
+        bool remove_successor( successor_type &r) {
             join_node_base_operation op_data(r, rem_succ);
             my_aggregator.execute(&op_data);
             return op_data.status == SUCCEEDED;
         }
 
-        bool try_get( output_type &v) __TBB_override {
+        bool try_get( output_type &v) {
             join_node_base_operation op_data(v, try__get);
             my_aggregator.execute(&op_data);
             return op_data.status == SUCCEEDED;
         }
 
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
-        built_successors_type &built_successors() __TBB_override { return my_successors.built_successors(); }
+        /*override*/built_successors_type &built_successors() { return my_successors.built_successors(); }
 
-        void internal_add_built_successor( successor_type &r) __TBB_override {
+        /*override*/void internal_add_built_successor( successor_type &r) {
             join_node_base_operation op_data(r, add_blt_succ);
             my_aggregator.execute(&op_data);
         }
 
-        void internal_delete_built_successor( successor_type &r) __TBB_override {
+        /*override*/void internal_delete_built_successor( successor_type &r) {
             join_node_base_operation op_data(r, del_blt_succ);
             my_aggregator.execute(&op_data);
         }
 
-        size_t successor_count() __TBB_override {
+        /*override*/size_t successor_count() {
             join_node_base_operation op_data(blt_succ_cnt);
             my_aggregator.execute(&op_data);
             return op_data.cnt_val;
         }
 
-        void copy_successors(successor_list_type &l) __TBB_override {
+        /*override*/ void copy_successors(successor_list_type &l) {
             join_node_base_operation op_data(blt_succ_cpy);
             op_data.slist = &l;
             my_aggregator.execute(&op_data);
@@ -1459,7 +1447,7 @@ namespace internal {
 #endif  /* TBB_PREVIEW_FLOW_GRAPH_FEATURES */
 
 #if TBB_PREVIEW_FLOW_GRAPH_FEATURES
-        void extract() __TBB_override {
+        /*override*/void extract() {
             input_ports_type::extract();
             my_successors.built_successors().sender_extract(*this);
         }
@@ -1467,7 +1455,7 @@ namespace internal {
 
     protected:
 
-        void reset_node(reset_flags f) __TBB_override {
+        /*override*/void reset_node(reset_flags f) {
             input_ports_type::reset(f);
             if(f & rf_clear_edges) my_successors.clear();
         }

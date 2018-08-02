@@ -6,9 +6,9 @@
 #pragma once
 
 #include <taichi/common/util.h>
-#include "geometry_util.h"
-#include "array.h"
-#include "vector.h"
+#include <taichi/math/geometry_util.h>
+#include <taichi/math/array.h>
+#include <taichi/math/vector.h>
 
 TC_NAMESPACE_BEGIN
 
@@ -25,23 +25,23 @@ TC_FORCE_INLINE T radians(T deg) {
 
 // clang-format off
 template <typename F, typename T>
-inline T map(const T &t, const F &f) {
+T map(const T &t, const F &f) {
   T ret;
   TC_STATIC_IF(type::is_VectorND<T>()) {
-    for (int i = 0; i < std::decay_t<decltype(id(t))>::dim; i++) {
-      id(ret)[i] = f(id(t)[i]);
+    for (int i = 0; i < T::dim; i++) {
+      ret[i] = f(t[i]);
     }
   }
   TC_STATIC_ELSE{
     TC_STATIC_IF(type::is_MatrixND<T>()){
-      for (int i = 0; i < std::decay_t<decltype(id(t))>::dim; i++){
-        for (int j = 0; j < std::decay_t<decltype(id(t))>::dim; j++){
-          id(ret)[i][j] = f(id(t)(i, j));
+      for (int i = 0; i < T::dim; i++){
+        for (int j = 0; j < T::dim; j++){
+          ret[i][j] = f(t(i, j));
         }
       }
     }
     TC_STATIC_ELSE {
-      id(ret) = f(id(t));
+      ret = f(t);
     }
     TC_STATIC_END_IF
   }
@@ -52,12 +52,12 @@ inline T map(const T &t, const F &f) {
 
 // clang-format off
 template <typename T>
-inline type::element<T> maximum(const T &t) {
+type::element<T> maximum(const T &t) {
   typename type::element<T> ret;
   TC_STATIC_IF(type::is_VectorND<T>()) {
-    ret = id(t)(0);
+    ret = t(0);
     for (int i = 1; i < T::dim; i++) {
-      ret = std::max(ret, id(t)(i));
+      ret = std::max(ret, t(i));
     }
   }
   TC_STATIC_ELSE {
@@ -65,12 +65,12 @@ inline type::element<T> maximum(const T &t) {
       ret = t(0, 0);
       for (int i = 0; i < T::dim; i++){
         for (int j = 0; j < T::dim; j++){
-          ret = std::max(ret, id(t)(i, j));
+          ret = std::max(ret, t(i, j));
         }
       }
     }
     TC_STATIC_ELSE {
-      ret = id(t);
+      ret = t;
     }
     TC_STATIC_END_IF
   }
@@ -81,25 +81,25 @@ inline type::element<T> maximum(const T &t) {
 
 // clang-format off
 template <typename T>
-inline type::element<T> minimum(const T &t) {
+type::element<T> minimum(const T &t) {
   typename type::element<T> ret;
   TC_STATIC_IF(type::is_VectorND<T>()) {
     ret = t(0);
     for (int i = 1; i < T::dim; i++) {
-      ret = std::min(ret, id(t)(i));
+      ret = std::min(ret, t(i));
     }
   }
   TC_STATIC_ELSE {
     TC_STATIC_IF(type::is_MatrixND<T>()) {
-      ret = id(t)(0, 0);
+      ret = t(0, 0);
       for (int i = 0; i < T::dim; i++){
         for (int j = 0; j < T::dim; j++){
-          ret = std::min(ret, id(t)(i, j));
+          ret = std::min(ret, t(i, j));
         }
       }
     }
     TC_STATIC_ELSE {
-      ret = id(t);
+      ret = t;
     }
     TC_STATIC_END_IF
   }
@@ -110,58 +110,60 @@ inline type::element<T> minimum(const T &t) {
 
 // clang-format off
 template <typename T>
-inline type::element<T> sum(const T &t) {
+type::element<T> sum(const T &t) {
   typename type::element<T> ret = 0;
   TC_STATIC_IF(type::is_VectorND<T>()) {
-    for (int i = 0; i < std::decay_t<decltype(id(t))>::dim; i++) {
-      ret += id(t)(i);
+    for (int i = 0; i < T::dim; i++) {
+      ret += t(i);
     }
   }
   TC_STATIC_ELSE {
     TC_STATIC_IF(type::is_MatrixND<T>()) {
-      for (int i = 0; i < std::decay_t<decltype(id(t))>::dim; i++){
-        for (int j = 0; j < std::decay_t<decltype(id(t))>::dim; j++){
-          ret += id(t)(i, j);
+      for (int i = 0; i < T::dim; i++){
+        for (int j = 0; j < T::dim; j++){
+          ret += t(i, j);
         }
       }
     }
     TC_STATIC_ELSE {
-      ret = id(t);
+      ret = t;
     }
     TC_STATIC_END_IF
   }
   TC_STATIC_END_IF
   return ret;
 }
+// clang-format on
 
 template <typename T>
-inline type::element<T> prod(const T &t) {
+type::element<T> prod(const T &t) {
   typename type::element<T> ret = 1;
   TC_STATIC_IF(type::is_VectorND<T>()) {
     for (int i = 0; i < T::dim; i++) {
-      ret *= id(t)(i);
+      ret *= t(i);
     }
-  } TC_STATIC_ELSE {
-    TC_STATIC_IF(type::is_MatrixND<T>()) {
-      for (int i = 0; i < T::dim; i++) {
-        for (int j = 0; j < T::dim; j++) {
-          ret *= id(t)(i, j);
-        }
-      }
-    } TC_STATIC_ELSE {
-      ret = id(t);
-    } TC_STATIC_END_IF
-  } TC_STATIC_END_IF
-  return ret;
+  }
+  TC_STATIC_ELSE{
+      TC_STATIC_IF(type::is_MatrixND<T>()){for (int i = 0; i < T::dim; i++){
+          for (int j = 0; j < T::dim; j++){ret *= t(i, j);
+}
+}
+}
+TC_STATIC_ELSE {
+  ret = t;
+}
+TC_STATIC_END_IF
+}
+TC_STATIC_END_IF
+return ret;
 }
 // clang-format on
 
 #define TC_MAKE_VECTORIZED_FROM_STD(op)                  \
-  template <typename T>                                  \
-  inline T op(const T &t) {                              \
+  auto op = [](const auto &t) {                          \
     using Elem = typename type::element<decltype(t)>;    \
     return map(t, static_cast<Elem (*)(Elem)>(std::op)); \
-  }
+  };
 
 TC_MAKE_VECTORIZED_FROM_STD(abs);
 TC_MAKE_VECTORIZED_FROM_STD(log);

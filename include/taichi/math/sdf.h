@@ -6,7 +6,7 @@
 #pragma once
 
 #include <taichi/common/interface.h>
-#include "math.h"
+#include <taichi/math/math.h>
 
 TC_NAMESPACE_BEGIN
 

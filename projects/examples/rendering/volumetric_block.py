@@ -1,17 +1,23 @@
+import math
+from taichi.visual import *
+from taichi.visual.post_process import *
+from taichi.visual.texture import Texture
 import taichi as tc
 
 
 def create_scene():
-  res = 1280, 720
-  camera = tc.Camera(
+  downsample = 1
+  width, height = 1280 / downsample, 720 / downsample
+  camera = Camera(
       'pinhole',
-      res=res,
+      width=width,
+      height=height,
       fov=30,
       origin=(4, 0, 15),
       look_at=(0, 0, 0),
       up=(0, 1, 0))
 
-  scene = tc.Scene()
+  scene = Scene()
   with scene:
     scene.set_camera(camera)
 
@@ -24,34 +30,34 @@ def create_scene():
         rotation=(-90, 0, 0))
     scene.add_mesh(mesh)
 
-    material = tc.SurfaceMaterial(
+    material = SurfaceMaterial(
         'diffuse', color=(0.5, 1, 1), roughness=1.0, f0=1)
     scene.add_mesh(
-        tc.Mesh(
+        Mesh(
             'cube', material=material, translate=(0, 0, -2.0), scale=(1, 1, 1)))
 
-    material = tc.SurfaceMaterial(
+    material = SurfaceMaterial(
         'diffuse', color=(1, 0.5, 1), roughness=1.0, f0=1)
     scene.add_mesh(
-        tc.Mesh(
+        Mesh(
             'cube', material=material, translate=(0, -2.0, 0), scale=(1, 1, 1)))
 
-    material = tc.SurfaceMaterial(
+    material = SurfaceMaterial(
         'diffuse', color=(1, 1, 0.5), roughness=1.0, f0=1)
     scene.add_mesh(
-        tc.Mesh(
+        Mesh(
             'cube', material=material, translate=(-2.0, 0, 0), scale=(1, 1, 1)))
 
-    envmap_texture = tc.Texture(
+    envmap_texture = Texture(
         'spherical_gradient',
         inside_val=(10, 10, 10, 10),
         outside_val=(1, 1, 1, 0),
         angle=10,
         sharpness=20)
-    envmap = tc.EnvironmentMap('base', texture=envmap_texture.id, res=(1024, 1024))
+    envmap = EnvironmentMap('base', texture=envmap_texture.id, res=(1024, 1024))
     scene.set_environment_map(envmap)
 
-    vol_tex = tc.Texture('sphere', center=(0.5, 0.5, 0.5), radius=0.5)
+    vol_tex = Texture('sphere', center=(0.5, 0.5, 0.5), radius=0.5)
     for i in range(3):
       with tc.transform_scope(translate=(i, 0, 0)):
         with tc.transform_scope(scale=1**i):
@@ -62,9 +68,11 @@ def create_scene():
 
 
 def render():
-  renderer = tc.Renderer(frame=0)
-  renderer.initialize(scene=create_scene(), sampler='prand')
-  renderer.render()
+  renderer = Renderer(output_dir='volumetric', overwrite=True, frame=0)
+  renderer.initialize(preset='pt', scene=create_scene(), sampler='prand')
+  renderer.set_post_processor(
+      LDRDisplay(exposure=0.9, bloom_radius=0.0, bloom_threshold=1.0))
+  renderer.render(100000)
 
 
 if __name__ == '__main__':

@@ -27,7 +27,7 @@ def next_frame():
   frame_fn = '%04d.json' % content['frame_id']
   next_frame = files[(files.index(frame_fn) + content['inc']) % len(files)].split('.')[0]
   next_frame = int(next_frame)
-
+  
   json_path = os.path.join(directory, frame_fn)
   response = {
     'next_frame': next_frame
@@ -46,8 +46,8 @@ def browse_outputs():
   entries = []
   for d in dirs:
     entries.append({
-      'title': d,
-      'text': '',
+        'title': d,
+        'text': '',
     })
   return render_template('browser.html', entries=entries)
 
@@ -85,7 +85,6 @@ def upload_frame(frame_id):
   with open(os.path.join(frame_buffer, '%06d.png' % int(frame_id)), 'wb') as f:
     f.write(img)
   return ''
-
+    
 def get_pakua_server():
   return app
-

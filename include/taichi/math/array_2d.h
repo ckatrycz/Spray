@@ -5,14 +5,13 @@
 
 #pragma once
 
+#include <taichi/math/array_fwd.h>
+#include "vector.h"
 #include <cstring>
 #include <cstdio>
 #include <string>
 #include <vector>
 #include <iterator>
-
-#include "array_fwd.h"
-#include "vector.h"
 
 TC_NAMESPACE_BEGIN
 
@@ -564,14 +563,6 @@ class ArrayND<2, T> {
     return data.cend();
   }
 
-  auto begin() {
-    return data.begin();
-  }
-
-  auto end() {
-    return data.end();
-  }
-
   T &operator[](const Vector2i &pos) {
     return (*this)[pos.x][pos.y];
   }
@@ -773,8 +764,7 @@ class ArrayND<2, T> {
                   const std::string &content,
                   real size,
                   int dx,
-                  int dy,
-                  T color = T(1.0_f));
+                  int dy);
 };
 
 template <typename T>

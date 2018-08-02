@@ -1,6 +1,4 @@
-from taichi.main import main
 from taichi.core import tc_core as core
-from taichi.core import start_memory_monitoring
 from taichi.dynamics import *
 from taichi.geometry import *
 from taichi.misc.util import Vector, Vectori
@@ -19,9 +17,6 @@ from taichi.visual.particle_renderer import *
 from taichi.dynamics.smoke3 import *
 from taichi.system import *
 from taichi.pakua import get_pakua_server
-
-def test():
-  task = taichi.Task('test')
-  return task.run([])
+from taichi.main import main
 
 __all__ = [s for s in dir() if not s.startswith('_')] + ['settings']

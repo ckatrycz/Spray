@@ -4,10 +4,11 @@ import colorsys
 
 def create_scene():
   downsample = 1
-  width, height = 960 // downsample, 540 // downsample
+  width, height = 960 / downsample, 540 / downsample
   camera = tc.Camera(
       'pinhole',
-      res=(width, height),
+      width=width,
+      height=height,
       fov=90,
       origin=(0, 0, 10),
       look_at=(0, 0, 0),
@@ -157,5 +158,8 @@ def create_scene():
 
 
 if __name__ == '__main__':
-  renderer = tc.Renderer(output_dir='paper_cut', scene=create_scene())
-  renderer.render()
+  renderer = tc.Renderer(output_dir='paper_cut', overwrite=True)
+  renderer.initialize(preset='pt', scene=create_scene())
+  renderer.set_post_processor(
+      tc.post_process.LDRDisplay(exposure=1.5, bloom_radius=0.1))
+  renderer.render(10000, 20)

@@ -5,10 +5,9 @@
 
 #pragma once
 
-#include <cmath>
 #include <taichi/util.h>
-#include "math.h"
-#include "vector.h"
+#include <taichi/math/math.h>
+#include <taichi/math/vector.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"
@@ -86,10 +85,10 @@ class Rotation {
   explicit Rotation(real value) {
     // according to dim
     TC_STATIC_IF(dim == 2) {
-      id(this->value) = value;
+      this->value = value;
     }
     TC_STATIC_ELSE {
-      id(this->value) = Eigen::Quaternion<real>(1, 0, 0, 0);
+      this->value = Eigen::Quaternion<real>(1, 0, 0, 0);
     }
     TC_STATIC_END_IF
     return;
@@ -106,13 +105,13 @@ class Rotation {
   Matrix get_rotation_matrix() const {
     Matrix ret;
     TC_STATIC_IF(dim == 2) {
-      ret[0][0] = std::cos(id(value));
-      ret[1][0] = -std::sin(id(value));
-      ret[0][1] = std::sin(id(value));
-      ret[1][1] = std::cos(id(value));
+      ret[0][0] = std::cos(value);
+      ret[1][0] = -std::sin(value);
+      ret[0][1] = std::sin(value);
+      ret[1][1] = std::cos(value);
     }
     TC_STATIC_ELSE {
-      auto mat = id(value).toRotationMatrix();
+      auto mat = value.toRotationMatrix();
       for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
           ret[i][j] = mat(j, i);

@@ -11,16 +11,12 @@
 #include <functional>
 #include <thread>
 #include <vector>
-#if defined(TC_PLATFORM_WINDOWS)
-#include <windows.h>
+#ifdef __WIN32__
+
 #else
 // Mac and Linux
 #include <unistd.h>
-#endif
-#if !defined(TC_AMALGAMATED)
 #include <tbb/tbb.h>
-#define TBB_PREVIEW_GLOBAL_CONTROL 1
-#include <tbb/global_control.h>
 #endif
 
 TC_NAMESPACE_BEGIN
@@ -66,19 +62,8 @@ class Spinlock {
 
 class ThreadedTaskManager {
  public:
-#if !defined(TC_AMALGAMATED)
-  class TbbParallelismControl {
-    std::unique_ptr<tbb::global_control> c;
-   public:
-    TbbParallelismControl(int threads) {
-      c = std::make_unique<tbb::global_control>(
-          tbb::global_control::max_allowed_parallelism, threads);
-    }
-  };
-#endif
   template <typename T>
   void static run(const T &target, int begin, int end, int num_threads) {
-#if !defined(TC_AMALGAMATED)
     if (num_threads > 0) {
       tbb::task_arena limited_arena(num_threads);
       limited_arena.execute([&]() { tbb::parallel_for(begin, end, target); });
@@ -90,9 +75,6 @@ class ThreadedTaskManager {
               num_threads));
       tbb::parallel_for(begin, end, target);
     }
-#else
-    TC_NOT_IMPLEMENTED
-#endif
   }
 
   template <typename T>
@@ -114,19 +96,10 @@ class ThreadedTaskManager {
 class PID {
  public:
   static int get_pid() {
-#if defined(TC_PLATFORM_WINDOWS)
-    return (int)GetCurrentProcessId();
-#else
     return (int)getpid();
-#endif
   }
   static int get_parent_pid() {
-#if defined(TC_PLATFORM_WINDOWS)
-    TC_NOT_IMPLEMENTED
-    return -1;
-#else
     return (int)getppid();
-#endif
   }
 };
 

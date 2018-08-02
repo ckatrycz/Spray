@@ -10,11 +10,18 @@
 #include <functional>
 #include <vector>
 #include <array>
-#include <immintrin.h>
 #include <taichi/common/util.h>
-#include "scalar.h"
+#include <taichi/math/scalar.h>
+
+#include <immintrin.h>
 
 TC_NAMESPACE_BEGIN
+
+#ifdef _WIN64
+#define TC_ALIGNED(x) __declspec(align(x))
+#else
+#define TC_ALIGNED(x) __attribute__((aligned(x)))
+#endif
 
 // Instruction Set Extension
 
@@ -29,12 +36,8 @@ constexpr InstSetExt default_instruction_set = InstSetExt::AVX;
 #elif TC_ISE_AVX2
 constexpr InstSetExt default_instruction_set = InstSetExt::AVX2;
 #else
-#if !defined(TC_AMALGAMATED)
-#warning \
-    "No Instruction Set Extension specified. Please define TC_ISE_{NONE|SSE|AVX|AVX2}. Assuming TC_ISE_NONE"
-#endif
-#define TC_ISE_ISE_NONE
-constexpr InstSetExt default_instruction_set = InstSetExt::None;
+#error \
+    "No Instruction Set Extension specified. Define TC_ISE_{NONE|SSE|AVX|AVX2}."
 #endif
 
 /////////////////////////////////////////////////////////////////
@@ -44,14 +47,12 @@ constexpr InstSetExt default_instruction_set = InstSetExt::None;
 template <int DIM, typename T, InstSetExt ISE, class Enable = void>
 struct VectorNDBase {
   static constexpr bool simd = false;
-  static constexpr int storage_elements = DIM;
   T d[DIM];
 };
 
 template <typename T, InstSetExt ISE>
 struct VectorNDBase<1, T, ISE, void> {
   static constexpr bool simd = false;
-  static constexpr int storage_elements = 1;
   union {
     T d[1];
     struct {
@@ -63,7 +64,6 @@ struct VectorNDBase<1, T, ISE, void> {
 template <typename T, InstSetExt ISE>
 struct VectorNDBase<2, T, ISE, void> {
   static constexpr bool simd = false;
-  static constexpr int storage_elements = 2;
   union {
     T d[2];
     struct {
@@ -80,7 +80,6 @@ struct VectorNDBase<
     typename std::enable_if_t<(!std::is_same<T, float32>::value ||
                                ISE < InstSetExt::SSE)>> {
   static constexpr bool simd = false;
-  static constexpr int storage_elements = 3;
   union {
     T d[3];
     struct {
@@ -96,7 +95,6 @@ struct TC_ALIGNED(16)
                  ISE,
                  typename std::enable_if_t<ISE >= InstSetExt::SSE>> {
   static constexpr bool simd = true;
-  static constexpr int storage_elements = 4;
   union {
     __m128 v;
     struct {
@@ -119,7 +117,6 @@ struct VectorNDBase<
     ISE,
     typename std::enable_if_t<(!std::is_same<T, float32>::value ||
                                ISE < InstSetExt::SSE)>> {
-  static constexpr int storage_elements = 4;
   static constexpr bool simd = false;
   union {
     T d[4];
@@ -133,7 +130,6 @@ template <InstSetExt ISE>
 struct TC_ALIGNED(16)
     VectorNDBase<4, float32, ISE, std::enable_if_t<(ISE >= InstSetExt::SSE)>> {
   static constexpr bool simd = true;
-  static constexpr int storage_elements = 4;
   union {
     __m128 v;
     struct {
@@ -166,7 +162,6 @@ struct VectorND : public VectorNDBase<DIM, T, ISE> {
 
   using VectorBase = VectorNDBase<DIM, T, ISE>;
   using VectorBase::d;
-  static constexpr int storage_elements = VectorBase::storage_elements;
 
   TC_FORCE_INLINE VectorND() {
     for (int i = 0; i < DIM; i++) {
@@ -440,14 +435,6 @@ struct VectorND : public VectorNDBase<DIM, T, ISE> {
             typename std::enable_if_t<SIMD_NONE<DIM_, T_, ISE_>, int> = 0>
   TC_FORCE_INLINE VectorND operator/(const VectorND &o) const {
     return VectorND([=](int i) { return this->d[i] / o[i]; });
-  }
-
-  template <int DIM_ = DIM,
-            typename T_ = T,
-            InstSetExt ISE_ = ISE,
-            typename std::enable_if_t<std::is_integral<T_>::value, int> = 0>
-  TC_FORCE_INLINE VectorND operator%(const VectorND &o) const {
-    return VectorND([=](int i) { return this->d[i] % o[i]; });
   }
 
   // Inplace operations
@@ -753,7 +740,7 @@ struct VectorND : public VectorNDBase<DIM, T, ISE> {
     return ret;
   }
 
-  TC_FORCE_INLINE VectorND pow(T index) const {
+  TC_FORCE_INLINE VectorND pow(real index) const {
     VectorND ret;
     for (int i = 0; i < DIM; i++) {
       ret[i] = std::pow(this->d[i], index);
@@ -790,9 +777,6 @@ struct VectorND : public VectorNDBase<DIM, T, ISE> {
   }
 };
 
-template <typename T, int dim, InstSetExt ISE = default_instruction_set>
-using TVector = VectorND<dim, T, ISE>;
-
 template <int DIM, typename T, InstSetExt ISE>
 TC_FORCE_INLINE VectorND<DIM, T, ISE> operator
     *(T a, const VectorND<DIM, T, ISE> &v) {
@@ -816,26 +800,6 @@ template <int DIM, typename T, InstSetExt ISE>
 TC_FORCE_INLINE VectorND<DIM, T, ISE> operator/(const VectorND<DIM, T, ISE> &v,
                                                 T a) {
   return v / VectorND<DIM, T, ISE>(a);
-}
-
-template <typename T>
-TC_FORCE_INLINE std::array<T, 1> to_std_array(const TVector<T, 1> &v) {
-  return std::array<T, 1>{v[0]};
-}
-
-template <typename T>
-TC_FORCE_INLINE std::array<T, 2> to_std_array(const TVector<T, 2> &v) {
-  return std::array<T, 2>{v[0], v[1]};
-}
-
-template <typename T>
-TC_FORCE_INLINE std::array<T, 3> to_std_array(const TVector<T, 3> &v) {
-  return std::array<T, 3>{v[0], v[1], v[2]};
-}
-
-template <typename T>
-TC_FORCE_INLINE std::array<T, 4> to_std_array(const TVector<T, 4> &v) {
-  return std::array<T, 4>{v[0], v[1], v[2], v[3]};
 }
 
 using Vector1 = VectorND<1, real, default_instruction_set>;
@@ -1241,9 +1205,6 @@ TC_FORCE_INLINE MatrixND<DIM, T, ISE> transposed(
   return transpose(mat);
 }
 
-template <typename T, int dim, InstSetExt ISE = default_instruction_set>
-using TMatrix = MatrixND<dim, T, ISE>;
-
 using Matrix2 = MatrixND<2, real, default_instruction_set>;
 using Matrix3 = MatrixND<3, real, default_instruction_set>;
 using Matrix4 = MatrixND<4, real, default_instruction_set>;
@@ -1262,7 +1223,7 @@ TC_FORCE_INLINE real determinant(const MatrixND<2, T, ISE> &mat) {
 }
 
 template <typename T, InstSetExt ISE>
-TC_FORCE_INLINE T determinant(const MatrixND<3, T, ISE> &mat) {
+TC_FORCE_INLINE real determinant(const MatrixND<3, T, ISE> &mat) {
   return mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2]) -
          mat[1][0] * (mat[0][1] * mat[2][2] - mat[2][1] * mat[0][2]) +
          mat[2][0] * (mat[0][1] * mat[1][2] - mat[1][1] * mat[0][2]);
@@ -1299,14 +1260,6 @@ TC_FORCE_INLINE VectorND<DIM, T, ISE> normalized(
   return normalize(a);
 }
 
-TC_FORCE_INLINE float32 length(const float32 &a) {
-  return a;
-}
-
-TC_FORCE_INLINE float64 length(const float64 &a) {
-  return a;
-}
-
 template <int DIM, typename T, InstSetExt ISE>
 TC_FORCE_INLINE T length(const VectorND<DIM, T, ISE> &a) {
   return a.length();
@@ -1340,7 +1293,7 @@ TC_FORCE_INLINE float64 inversed(const float64 &a) {
 
 template <InstSetExt ISE, typename T>
 TC_FORCE_INLINE MatrixND<2, T, ISE> inversed(const MatrixND<2, T, ISE> &mat) {
-  T det = determinant(mat);
+  real det = determinant(mat);
   return static_cast<T>(1) / det *
          MatrixND<2, T, ISE>(VectorND<2, T, ISE>(mat[1][1], -mat[0][1]),
                              VectorND<2, T, ISE>(-mat[1][0], mat[0][0]));
@@ -1761,106 +1714,11 @@ struct is_VectorND : public std::false_type {};
 
 template <int N, typename T, InstSetExt ISE>
 struct is_VectorND<VectorND<N, T, ISE>> : public std::true_type {};
-
 template <typename>
 struct is_MatrixND : public std::false_type {};
 
 template <int N, typename T, InstSetExt ISE>
 struct is_MatrixND<MatrixND<N, T, ISE>> : public std::true_type {};
 }  // namespace type
-
-// Intrinsics
-template <int i1>
-TC_FORCE_INLINE float32 extract_float32(const __m128 &s) {
-  int ret = _mm_extract_ps(s, i1);
-  return reinterpret_cast<float32 *>(&ret)[0];
-}
-
-template <int i1>
-TC_FORCE_INLINE __m128 broadcast(const __m128 &s) {
-  return _mm_shuffle_ps(s, s, 0x55 * i1);
-}
-
-#if defined(TC_AMALGAMATED)
-TC_FORCE_INLINE void polar_decomp(Matrix2 m, Matrix2 &R, Matrix2 &S) {
-  auto x = m(0, 0) + m(1, 1);
-  auto y = m(1, 0) - m(0, 1);
-  auto scale = 1.0_f / std::sqrt(x * x + y * y);
-  auto c = x * scale, s = y * scale;
-  R(0, 0) = c;
-  R(0, 1) = -s;
-  R(1, 0) = s;
-  R(1, 1) = c;
-  S = transposed(R) * m;
-}
-
-// Based on http://www.seas.upenn.edu/~cffjiang/research/svd/svd.pdf
-// Algorithm 4
-inline void svd(Matrix2 m, Matrix2 &U, Matrix2 &sig, Matrix2 &V) {
-  Matrix2 S;
-  polar_decomp(m, U, S);
-  real c, s;
-  if (std::abs(S(0, 1)) < 1e-6_f) {
-    sig = S;
-    c = 1;
-    s = 0;
-  } else {
-    auto tao = 0.5_f * (S(0, 0) - S(1, 1));
-    auto w = std::sqrt(tao * tao + S(0, 1) * S(0, 1));
-    auto t = tao > 0 ? S(0, 1) / (tao + w) : S(0, 1) / (tao - w);
-    c = 1.0_f / std::sqrt(t * t + 1);
-    s = -t * c;
-    sig(0, 0) = pow<2>(c) * S(0, 0) - 2 * c * s * S(0, 1) + pow<2>(s) * S(1, 1);
-    sig(1, 1) = pow<2>(s) * S(0, 0) + 2 * c * s * S(0, 1) + pow<2>(c) * S(1, 1);
-  }
-  if (sig(0, 0) < sig(1, 1)) {
-    std::swap(sig(0, 0), sig(1, 1));
-    V(0, 0) = -s;
-    V(0, 1) = -c;
-    V(1, 0) = c;
-    V(1, 1) = -s;
-  } else {
-    V(0, 0) = c;
-    V(0, 1) = -s;
-    V(1, 0) = s;
-    V(1, 1) = c;
-  }
-  V = transposed(V);
-  U = U * V;
-}
-
-template <int dim, typename T>
-inline void test_simple_decompositions() {
-  using Matrix = MatrixND<dim, T>;
-  T tolerance = std::is_same<T, float32>() ? 3e-5_f32 : 1e-12_f32;
-  for (int i = 0; i < 10000; i++) {
-    Matrix m = Matrix::rand();
-    Matrix U, sig, V, Q, R, S;
-
-    polar_decomp(m, R, S);
-    TC_CHECK_EQUAL(m, R * S, tolerance);
-    TC_CHECK_EQUAL(Matrix(1), R * transposed(R), tolerance);
-    TC_CHECK_EQUAL(1.0_f, determinant(R), tolerance);
-    TC_CHECK_EQUAL(S, transposed(S), tolerance);
-
-    svd(m, U, sig, V);
-    if (dim == 2) {
-      CHECK(tolerance + sig(0, 0) > std::abs(sig(1, 1)));
-    }
-    TC_CHECK_EQUAL(m, U * sig * transposed(V), tolerance);
-    TC_CHECK_EQUAL(Matrix(1), U * transposed(U), tolerance);
-    TC_CHECK_EQUAL(Matrix(1), V * transposed(V), tolerance);
-    TC_CHECK_EQUAL(1.0_f, determinant(U), tolerance);
-    TC_CHECK_EQUAL(1.0_f, determinant(V), tolerance);
-    TC_CHECK_EQUAL(sig, Matrix(sig.diag()), tolerance);
-  }
-};
-
-/*
-TC_TEST("SVD") {
-  test_simple_decompositions<2, float32>();
-}
-*/
-#endif
 
 TC_NAMESPACE_END

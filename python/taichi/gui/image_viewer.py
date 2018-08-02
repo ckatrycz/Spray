@@ -1,6 +1,6 @@
+from .tk.viewer import ImageViewer, update_tk
 import taichi as tc
 import numpy as np
-from .qt_viewer import create_window
 
 viewers = {}
 
@@ -23,10 +23,11 @@ def show_image(name, img):
         img = img[:, :, :3]
   img = (img * 255).astype('uint8')
 
-  #if name in viewers:
-  #  viewers[name].update(img)
-  #else:
-  #  viewers[name] = ImageViewer(name, img)
-  create_window(name, img)
+  if name in viewers:
+    viewers[name].update(img)
+  else:
+    viewers[name] = ImageViewer(name, img)
+  update_tk()
+
 
 # TODO: destory viewers atexit

@@ -2,26 +2,13 @@
     Copyright (c) The Taichi Authors (2016- ). All Rights Reserved.
     The use of this software is governed by the LICENSE file.
 *******************************************************************************/
-#include "util.h"
-#include <immintrin.h>
+#include <taichi/util.h>
 
 TC_NAMESPACE_BEGIN
 
 namespace bit {
 
-TC_FORCE_INLINE constexpr bool is_power_of_two(int32 x) {
-  return x != 0 && (x & (x - 1)) == 0;
-}
-
-TC_FORCE_INLINE constexpr bool is_power_of_two(uint32 x) {
-  return x != 0 && (x & (x - 1)) == 0;
-}
-
-TC_FORCE_INLINE constexpr bool is_power_of_two(int64 x) {
-  return x != 0 && (x & (x - 1)) == 0;
-}
-
-TC_FORCE_INLINE constexpr bool is_power_of_two(uint64 x) {
+TC_FORCE_INLINE constexpr bool is_power_of_two(int x) {
   return x != 0 && (x & (x - 1)) == 0;
 }
 
@@ -82,78 +69,6 @@ constexpr int bit_length() {
   void set_##name(const T &val) {                       \
     Base::set<start, bit::bit_length<T>()>(val);        \
   }
-
-template <typename T, int N>
-TC_FORCE_INLINE constexpr T product(const std::array<T, N> arr) {
-  T ret(1);
-  for (int i = 0; i < N; i++) {
-    ret *= arr[i];
-  }
-  return ret;
-}
-
-constexpr std::size_t least_pot_bound(std::size_t v) {
-  std::size_t ret = 1;
-  while (ret < v) {
-    ret *= 2;
-  }
-  return ret;
-}
-
-TC_FORCE_INLINE uint32 pdep(uint32 value, uint32 mask) {
-  return _pdep_u32(value, mask);
-}
-
-TC_FORCE_INLINE uint32 pdep(int32 value, int32 mask) {
-  return pdep((uint32)value, (uint32)mask);
-}
-
-TC_FORCE_INLINE uint64 pdep(uint64 value, uint64 mask) {
-  return _pdep_u64(value, mask);
-}
-
-TC_FORCE_INLINE constexpr uint32 pot_mask(int x) {
-  return (1u << x) - 1;
-}
-
-TC_FORCE_INLINE constexpr uint32 log2int(uint64 value) {
-  int ret = 0;
-  value >>= 1;
-  while (value) {
-    value >>= 1;
-    ret += 1;
-  }
-  return ret;
-}
-
-template <typename G, typename T>
-struct Reinterpretor {
-  union {
-    G g;
-    T t;
-  };
-
-  Reinterpretor(T t) : t(t) {
-  }
-  static_assert(sizeof(T) == sizeof(G), "");
-};
-
-template <typename G, typename T>
-TC_FORCE_INLINE constexpr G reinterpret_bits(T t) {
-  return Reinterpretor<G, T>(t).g;
-};
-
-TC_FORCE_INLINE constexpr float64 compress(float32 h, float32 l) {
-  uint64 data =
-      ((uint64)reinterpret_bits<uint32>(h) << 32) + reinterpret_bits<uint32>(l);
-  return reinterpret_bits<float64>(data);
-}
-
-TC_FORCE_INLINE constexpr std::tuple<float32, float32> extract(float64 x) {
-  auto data = reinterpret_bits<uint64>(x);
-  return std::make_tuple(reinterpret_bits<float32>((uint32)(data >> 32)),
-                         reinterpret_bits<float32>((uint32)(data & (-1))));
-}
 
 }  // namespace bit
 

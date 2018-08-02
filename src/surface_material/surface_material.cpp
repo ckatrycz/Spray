@@ -49,7 +49,7 @@ class EmissiveMaterial : public SurfaceMaterial {
                            real u,
                            real v,
                            const Vector2 &uv) const {
-    return random_diffuse(Vector3(0.0_f, 0.0_f, in.z > 0 ? 1.0_f : -1.0_f), u, v);
+    return random_diffuse(Vector3(0, 0, in.z > 0 ? 1 : -1), u, v);
   }
 
   virtual void sample(const Vector3 &in_dir,
@@ -165,7 +165,7 @@ class DiffuseMaterial : public SurfaceMaterial {
                            real u,
                            real v,
                            const Vector2 &uv) const {
-    Vector3 normal(0.0_f, 0.0_f, sgn(in.z) * 1_f);
+    Vector3 normal(0, 0, sgn(in.z));
     if (abs(in.z) > 1 - eps) {
       return random_diffuse(normal, u, v);
     } else {

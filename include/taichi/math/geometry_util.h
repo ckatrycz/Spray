@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <taichi/common/util.h>
-#include "vector.h"
+#include <taichi/math/vector.h>
 
 TC_NAMESPACE_BEGIN
 
@@ -46,7 +46,7 @@ inline real nearest_distance(const Vector2 &p,
 inline bool inside_polygon(const Vector2 &p,
                            const std::vector<Vector2> &polygon) {
   int count = 0;
-  static const Vector2 q(123532_f, 532421123_f);
+  static const Vector2 q(123532, 532421123);
   for (int i = 0; i < (int)polygon.size(); i++) {
     count += intersect(p, q, polygon[i], polygon[(i + 1) % polygon.size()]);
   }

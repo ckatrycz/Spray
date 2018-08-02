@@ -11,7 +11,6 @@
 #include <taichi/python/export.h>
 #include <taichi/system/benchmark.h>
 #include <taichi/system/profiler.h>
-#include <taichi/system/memory.h>
 #include <taichi/system/unit_dll.h>
 #include <taichi/visual/texture.h>
 #include <taichi/geometry/factory.h>
@@ -68,26 +67,27 @@ void print_all_units() {
   std::cout << all_units << " units in all." << std::endl;
 }
 
+static int stdout_fd = -1;
 
 void duplicate_stdout_to_file(const std::string &fn) {
-/*
-static int stdout_fd = -1;
+  /*
 int fd[2];
 pipe(fd);
 stdout = fdopen(fd[1], "w");
 auto file_fd = fdopen(fd[0], "w");
 FILE *file = freopen(fn.c_str(), "w", file_fd);
 */
-#if defined(TC_PLATFORM_UNIX)
   std::cerr.rdbuf(std::cout.rdbuf());
   dup2(fileno(popen(fmt::format("tee {}", fn).c_str(), "w")), STDOUT_FILENO);
-#else
-  TC_NOT_IMPLEMENTED;
-#endif
 }
 
 void stop_duplicating_stdout_to_file(const std::string &fn) {
   TC_NOT_IMPLEMENTED;
+  TC_ASSERT(stdout_fd != -1);
+  fclose(stdout);
+  dup2(stdout_fd, STDOUT_FILENO);
+  stdout = fdopen(STDOUT_FILENO, "w");
+  close(stdout_fd);
 }
 
 void export_misc(py::module &m) {
@@ -143,7 +143,6 @@ void export_misc(py::module &m) {
   m.def("test_raise_error", test_raise_error);
   m.def("test_volumetric_io", test_volumetric_io);
   m.def("config_from_dict", config_from_py_dict);
-  m.def("get_default_float_size", []() { return sizeof(real); });
   m.def("register_at_exit",
         [&](uint64 ptr) { python_at_exit = *(Function11 *)(ptr); });
   m.def("trigger_sig_fpe", []() {
@@ -152,8 +151,8 @@ void export_misc(py::module &m) {
     return 1 / a;
   });
   // m.def("dict_from_config", py_dict_from_py_config);
-  m.def("print_profile_info", [&]() { print_profile_info(); });
-  m.def("start_memory_monitoring", start_memory_monitoring);
+  m.def("print_profile_info",
+        [&]() { ProfilerRecords::get_instance().print(); });
 }
 
 TC_NAMESPACE_END

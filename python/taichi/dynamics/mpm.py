@@ -12,8 +12,6 @@ import errno
 import sys
 import os
 import getopt
-from taichi.tools import messager
-
 
 class MPM:
   def __init__(self, snapshot_interval=20, **kwargs):
@@ -47,11 +45,6 @@ class MPM:
     self.snapshot_directory = os.path.join(self.directory, 'snapshots')
     self.video_manager = VideoManager(self.directory)
     kwargs['frame_directory'] = self.video_manager.get_frame_directory()
-    
-    self.log_fn = os.path.join(self.directory, 'log.txt')
-    tc.duplicate_stdout_to_file(self.log_fn)
-    tc.redirect_print_to_log()
-    tc.trace("log_fn = {}", self.log_fn)
 
     try:
       opts, args = getopt.getopt(sys.argv[1:], 'c:d:', ['continue=', 'dt-multiplier='])
@@ -95,8 +88,6 @@ class MPM:
     self.simulation_total_time = None
     self.visualize_count = 0
     self.visualize_count_limit = 400000.0
-    
-    messager.enable(self.task_id)
 
   def check_directory(self, directory):
     try:
@@ -210,7 +201,7 @@ class MPM:
     taichi.clear_directory_with_suffix(frames_dir, 'obj')
     # taichi.clear_directory_with_suffix(self.snapshot_directory, 'tcb')
 
-  def simulate(self, clear_output_directory=False, print_profile_info=True, frame_update=None, update_frequency=1):
+  def simulate(self, clear_output_directory=False, frame_update=None, update_frequency=1):
     # do restart
     if self.continue_opt:
       path = self.snapshot_directory
@@ -232,8 +223,6 @@ class MPM:
           frame_update(self.get_current_time(), self.frame_dt / update_frequency)
         self.step(self.frame_dt / update_frequency)
       self.visualize()
-      if print_profile_info:
-        tc.core.print_profile_info()
       self.c.frame += 1
       if self.c.frame % self.snapshot_interval == 0:
         self.save(self.get_snapshot_file_name(self.c.frame))
@@ -251,8 +240,6 @@ class MPM:
           frame_update(self.get_current_time(), self.frame_dt / update_frequency)
         self.step(self.frame_dt / update_frequency)
       self.visualize()
-      if print_profile_info:
-        tc.core.print_profile_info()
       self.c.frame += 1
       energy.append(float(self.general_action(action="calculate_energy")))
     return energy

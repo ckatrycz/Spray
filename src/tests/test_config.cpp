@@ -5,6 +5,7 @@
 
 #include <taichi/util.h>
 #include <taichi/math.h>
+#include <taichi/math/qr_svd.h>
 
 TC_NAMESPACE_BEGIN
 

@@ -7,8 +7,8 @@
 
 #include <memory>
 #include <taichi/common/util.h>
-#include "array.h"
-#include "math.h"
+#include <taichi/math/array.h>
+#include <taichi/math/math.h>
 
 TC_NAMESPACE_BEGIN
 
@@ -54,10 +54,6 @@ class LevelSet : public ArrayND<DIM, real> {
   void add_cuboid(Vector3 lower_boundry,
                   Vector3 upper_boundry,
                   bool inside_out = true);
-
-  void add_slope(const Vector &center, real radius, real angle);
-
-  void add_cylinder(const Vector &center, real radius, bool inside_out = true);
 
   void global_increase(real delta);
 

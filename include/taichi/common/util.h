@@ -1,6 +1,6 @@
 /*******************************************************************************
-    copyright (c) the taichi authors (2016- ). all rights reserved.
-    the use of this software is governed by the license file.
+    Copyright (c) The Taichi Authors (2016- ). All Rights Reserved.
+    The use of this software is governed by the LICENSE file.
 *******************************************************************************/
 
 #pragma once
@@ -15,71 +15,13 @@
 #include <type_traits>
 #include <cstdint>
 #include <algorithm>
+#include <spdlog/fmt/fmt.h>
 #include <memory>
 #include <csignal>
-#include <vector>
 
-
-//******************************************************************************
-//                                 System State
-//******************************************************************************
-
-
-// Reference:
-// https://blog.kowalczyk.info/article/j/guide-to-predefined-macros-in-c-compilers-gcc-clang-msvc-etc..html
-
-// Platforms
-
-// Windows
-#if defined(_WIN64)
-#define TC_PLATFORM_WINDOWS
-#endif
-
-#if defined(_WIN32) && !defined(_WIN64)
-static_assert(false, "32-bit Windows systems are not supported")
-#endif
-
-// Linux
-#if defined(__linux__)
-#define TC_PLATFORM_LINUX
-#endif
-
-// OSX
-#if defined(__APPLE__)
-#define TC_PLATFORM_OSX
-#endif
-
-#if defined(TC_PLATFORM_LINUX) or defined(TC_PLATFORM_OSX)
-#define TC_PLATFORM_UNIX
-#endif
-
-// Compilers
-
-// MSVC
-#if defined(_MSC_VER)
-#define TC_COMPILER_MSVC
-#endif
-
-// MINGW
-#if defined(__MINGW64__)
-#define TC_COMPILER_MINGW
-#endif
-
-// gcc
-#if defined(__GNUC__)
-#define TC_COMPILER__GCC
-#endif
-
-// clang
-#if defined(__clang__)
-#define TC_COMPILER_CLANG
-#endif
-
-#if defined(TC_COMPILER_MSVC)
-#define TC_ALIGNED(x) __declspec(align(x))
-#else
-#define TC_ALIGNED(x) __attribute__((aligned(x)))
-#endif
+namespace spdlog {
+class logger;
+}
 
 // Do not disable assert...
 #ifdef NDEBUG
@@ -101,7 +43,7 @@ static_assert(false, "32-bit Windows systems are not supported")
 #define TC_EXPORT
 #endif
 #define TC_P(x) \
-  { TC_DEBUG("{}", taichi::TextSerializer::serialize(#x, (x))); }
+  { TC_DEBUG("{}", taichi::TextSerializer::serialize(#x, x)); }
 
 #ifndef _WIN64
 #define sscanf_s sscanf
@@ -120,6 +62,9 @@ static_assert(false, "32-bit Windows systems are not supported")
 #define DEBUG_TRIGGER
 #endif
 
+#define assert(x) \
+  { assert_info(x, ""); }
+
 #define assert_info(x, info)               \
   {                                        \
     bool ___ret___ = static_cast<bool>(x); \
@@ -128,8 +73,7 @@ static_assert(false, "32-bit Windows systems are not supported")
     }                                      \
   }
 
-#define TC_STATIC_ASSERT(x) static_assert((x), #x);
-#define TC_ASSERT(x) TC_ASSERT_INFO((x), #x)
+#define TC_ASSERT assert
 #define TC_ASSERT_INFO assert_info
 // TODO: this should be part of logging
 #define TC_NOT_IMPLEMENTED TC_ERROR("Not Implemented.");
@@ -137,8 +81,22 @@ static_assert(false, "32-bit Windows systems are not supported")
 #define TC_NAMESPACE_BEGIN namespace taichi {
 #define TC_NAMESPACE_END }
 
-TC_EXPORT void taichi_raise_assertion_failure_in_python(const char *msg);
+// Check for inf, nan?
+// #define CV_ON
 
+#ifdef CV_ON
+#define CV(v)                                              \
+  if (abnormal(v)) {                                       \
+    for (int i = 0; i < 1; i++)                            \
+      printf("Abnormal value %s (Ln %d)\n", #v, __LINE__); \
+    taichi::print(v);                                      \
+    puts("");                                              \
+  }
+#else
+#define CV(v)
+#endif
+
+TC_EXPORT void taichi_raise_assertion_failure_in_python(const char *msg);
 
 TC_NAMESPACE_BEGIN
 
@@ -245,11 +203,6 @@ TC_NAMESPACE_END
 //******************************************************************************
 //                               Logging
 //******************************************************************************
-#include "spdlog/fmt/fmt.h"
-namespace spdlog {
-class logger;
-}
-
 TC_NAMESPACE_BEGIN
 
 #define SPD_AUGMENTED_LOG(X, ...)                                        \
@@ -338,53 +291,6 @@ class Logger {
 
 extern Logger logger;
 
-namespace zip {
-
-void write(std::string fn, const uint8 *data, std::size_t len);
-void write(const std::string &fn, const std::string &data);
-std::vector<uint8> read(const std::string fn, bool verbose = false);
-
-}  // namespace zip
-
-//******************************************************************************
-//                               String Utils
-//******************************************************************************
-
-inline std::vector<std::string> split_string(const std::string &s,
-                                             const std::string &seperators) {
-  std::vector<std::string> ret;
-  bool is_seperator[256] = {false};
-  for (auto &ch : seperators) {
-    is_seperator[(unsigned int)ch] = true;
-  }
-  int begin = 0;
-  for (int i = 0; i <= (int)s.size(); i++) {
-    if (is_seperator[(uint8)s[i]] || i == (int)s.size()) {
-      ret.push_back(std::string(s.begin() + begin, s.begin() + i));
-      begin = i + 1;
-    }
-  }
-  return ret;
-}
-
-inline std::string trim_string(const std::string &s) {
-  int begin = 0, end = (int)s.size();
-  while (begin < end && s[begin] == ' ') {
-    begin++;
-  }
-  while (begin < end && s[end - 1] == ' ') {
-    end--;
-  }
-  return std::string(s.begin() + begin, s.begin() + end);
-}
-
-inline bool ends_with(std::string const &str, std::string const &ending) {
-  if (ending.size() > str.size())
-    return false;
-  else
-    return std::equal(ending.begin(), ending.end(), str.end() - ending.size());
-}
-
 TC_NAMESPACE_END
 
 //******************************************************************************
@@ -405,22 +311,6 @@ void trash(T &&t) {
   static_assert(!std::is_same<T, void>::value, "");
   __trash__ = *reinterpret_cast<uint8 *>(&t);
 }
-
-class DeferedExecution {
-  std::function<void(void)> statement;
-
-public:
-  DeferedExecution(const std::function<void(void)> &statement)
-      : statement(statement) {
-  }
-
-  ~DeferedExecution() {
-    statement();
-  }
-};
-
-#define TC_DEFER(x) taichi::DeferedExecution _defered([&]() {x;});
-
 
 TC_NAMESPACE_END
 

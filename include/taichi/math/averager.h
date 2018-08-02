@@ -7,7 +7,7 @@
 
 #include <functional>
 
-#include "math.h"
+#include <taichi/math/math.h>
 
 TC_NAMESPACE_BEGIN
 

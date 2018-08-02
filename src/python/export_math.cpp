@@ -4,7 +4,7 @@
 *******************************************************************************/
 
 #include <taichi/python/export.h>
-#include <taichi/common/dict.h>
+#include <taichi/common/config.h>
 #include <taichi/math/levelset.h>
 #include <taichi/visualization/rgb.h>
 #include <taichi/math/levelset.h>
@@ -89,8 +89,8 @@ void array2d_to_ndarray(T *arr,
                         uint64 output)  // 'output' is actually a pointer...
 {
   int width = arr->get_width(), height = arr->get_height();
-  TC_ASSERT(width > 0);
-  TC_ASSERT(height > 0);
+  assert_info(width > 0, "");
+  assert_info(height > 0, "");
   for (auto &ind : arr->get_region()) {
     for (int k = 0; k < channels; k++) {
       reinterpret_cast<real *>(
@@ -355,7 +355,6 @@ void export_math(py::module &m) {
       .def("add_sphere", &LevelSet2D::add_sphere)
       .def("add_polygon", &LevelSet2D::add_polygon)
       .def("add_plane", &LevelSet2D::add_plane)
-      .def("add_slope", &LevelSet2D::add_slope)
       .def("get_gradient", &LevelSet2D::get_gradient)
       .def("rasterize", &LevelSet2D::rasterize)
       .def("sample", static_cast<real (LevelSet2D::*)(real, real) const>(
@@ -381,8 +380,6 @@ void export_math(py::module &m) {
       .def("add_sphere", &LevelSet3D::add_sphere)
       .def("add_plane", &LevelSet3D::add_plane)
       .def("add_cuboid", &LevelSet3D::add_cuboid)
-      .def("add_slope", &LevelSet3D::add_slope)
-      .def("add_cylinder", &LevelSet3D::add_cylinder)
       .def("global_increase", &LevelSet3D::global_increase)
       .def("get_gradient", &LevelSet3D::get_gradient)
       .def("rasterize", &LevelSet3D::rasterize)
